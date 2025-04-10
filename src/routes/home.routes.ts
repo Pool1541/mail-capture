@@ -1,5 +1,7 @@
+/* eslint-disable @typescript-eslint/unbound-method */
+
 import { Router } from "express";
-import HomeController from "../controllers/HomeController";
+import HomeController from "@/controllers/HomeController";
 
 const homeRouter: Router = Router();
 

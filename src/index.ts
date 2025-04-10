@@ -2,8 +2,8 @@ import express, { Application, urlencoded } from "express";
 import cors from "cors";
 import morgan from "morgan";
 import helmet from "helmet";
-import routes from "./routes";
-import { responseInterceptor } from "./utils/response-interceptor";
+import routes from "@/routes";
+import { responseInterceptor } from "@/utils/response-interceptor";
 
 class Server {
   private app: Application;
