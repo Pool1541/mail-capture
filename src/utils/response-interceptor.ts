@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 
-export interface ApiResponseFormat<T = any> {
+export interface ApiResponseFormat<T = unknown> {
   success: boolean;
   data: T | null;
   message: string;
@@ -13,9 +13,9 @@ export class ResponseInterceptor {
     const originalJson = res.json;
     const originalSend = res.send;
 
-    res.json = function (body: any): Response {
+    res.json = function (body: unknown): Response {
       try {
-        if (body && !("success" in body && "data" in body && "message" in body)) {
+        if (body && typeof body === "object" && !("success" in body && "data" in body && "message" in body)) {
           const statusCode = res.statusCode || 200;
           const isSuccess = statusCode >= 200 && statusCode < 400;
 
@@ -29,15 +29,15 @@ export class ResponseInterceptor {
 
           return originalJson.call(res, formattedResponse);
         }
-      } catch (error) {
+      } catch {
         return originalJson.call(res, body);
       }
 
       return originalJson.call(res, body);
     };
 
-    res.send = function (body: any): Response {
-      if (typeof body === "object" && body !== null) {
+    res.send = function (body: unknown): Response {
+      if (body !== null && typeof body === "object") {
         return res.json(body);
       }
       return originalSend.call(res, body);
