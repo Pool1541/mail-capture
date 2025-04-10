@@ -1,13 +1,10 @@
-// @ts-check
-
 import eslint from "@eslint/js";
-import tseslint from "typescript-eslint";
-import perfectionist from "eslint-plugin-perfectionist";
 import vitest from "@vitest/eslint-plugin";
+import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   {
-    ignores: ["**/*.js"],
+    ignores: ["**/*.js", "**/*.mjs"],
   },
   eslint.configs.recommended,
   tseslint.configs.strictTypeChecked,
@@ -15,12 +12,11 @@ export default tseslint.config(
   {
     languageOptions: {
       parserOptions: {
-        projectService: true,
+        project: "./tsconfig.eslint.json",
         tsconfigRootDir: import.meta.dirname,
       },
     },
   },
-  perfectionist.configs["recommended-natural"],
   {
     files: ["**/*.test.ts", "**/*.spec.ts"],
     plugins: {
