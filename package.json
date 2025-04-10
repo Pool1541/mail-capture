@@ -1,7 +1,7 @@
 {
-  "name": "express-typescript-eslint-prettier-template",
-  "version": "1.0.0",
-  "description": "An Express.js template with Typescript, ESLint and prettier",
+  "name": "mail-capture",
+  "version": "0.0.1",
+  "description": "",
   "scripts": {
     "start": "node --env-file .env dist/index.js",
     "dev": "tsx --watch --env-file .env.development src/index.ts",
@@ -21,15 +21,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Pool1541/express-typescript-eslint-prettier-template.git"
+    "url": "git+https://github.com/Pool1541/mail-capture.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/Pool1541/express-typescript-eslint-prettier-template/issues"
+    "url": "https://github.com/Pool1541/mail-capture/issues"
   },
-  "homepage": "https://github.com/Pool1541/express-typescript-eslint-prettier-template#readme",
+  "homepage": "https://github.com/Pool1541/mail-capture#readme",
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^5.1.0",
