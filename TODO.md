@@ -10,3 +10,6 @@
   - Puede usar una viable en el script para obtener todos los usuarios registrados y luego agregar el nuevo usuario a la lista.
   - El script de registro de contactos de Exchange Online debe ejecutarse cada vez que un usuario nuevo se da de alta en la aplicación.
   - Actualmente el script registra todos los contactos en la whitelist cada vez que se ejecuta, por lo que es **necesario optimizarlo para que solo agregue a los nuevos usuarios**.
+- Actualmente se usa un webhook de Supabase para recibir notificaciones de nuevos registros (con correo verificado) y activar el script de registro de contactos de Exchange Online, pero esto tiene un problema:
+  - No hay seguridad de que la solicitud al webhook sea legítima, ya que cualquier persona podría enviar una solicitud al webhook con el payload adecuado y activar el script.
+  - Se debe implementar una verificación de seguridad para asegurarse de que la solicitud al webhook sea legítima.
