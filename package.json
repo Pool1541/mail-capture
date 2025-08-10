@@ -3,6 +3,8 @@
   "version": "0.0.1",
   "description": "",
   "scripts": {
+    "start:hex": "npx tsx --env-file .env.development ./src/user/main.ts",
+    "dev:hex": "npx tsx --watch --env-file .env.development ./src/user/main.ts",
     "start": "node --env-file .env dist/index.js",
     "dev": "tsx --watch --env-file .env.development src/index.ts",
     "dev:staging": "tsx --watch --env-file .env.staging src/index.ts",
@@ -17,7 +19,8 @@
     "test:run": "vitest --run",
     "test:ui": "vitest --ui",
     "coverage": "vitest run --coverage",
-    "prepare": "husky"
+    "prepare": "husky",
+    "gen:types": "npx -y supabase gen types typescript --project-id oxqhmmmfutssovuegynl --schema public > ./src/shared/infrastructure/types/supabase.ts"
   },
   "repository": {
     "type": "git",
@@ -31,15 +34,19 @@
   },
   "homepage": "https://github.com/Pool1541/mail-capture#readme",
   "dependencies": {
+    "@aws-sdk/client-sqs": "^3.862.0",
     "@azure/msal-node": "^3.5.1",
     "@microsoft/microsoft-graph-client": "^3.0.7",
+    "@supabase/supabase-js": "^2.50.3",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
     "express-session": "^1.18.1",
     "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
-    "playwright": "^1.52.0"
+    "playwright": "^1.52.0",
+    "resend": "^4.7.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.24.0",
@@ -47,6 +54,7 @@
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.1",
     "@types/express-session": "^1.18.1",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/morgan": "^1.9.9",
     "@types/node": "^22.14.0",
     "@vitest/coverage-v8": "^3.1.1",
