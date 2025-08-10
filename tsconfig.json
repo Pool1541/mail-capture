@@ -6,6 +6,8 @@
     "paths": {
       "@/*": ["./src/*"]
     }
+    // "esModuleInterop": true,
+    // "allowSyntheticDefaultImports": true
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*.ts", "scripts/**/*.ts"]
 }
