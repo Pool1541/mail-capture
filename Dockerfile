@@ -54,7 +54,7 @@ sleep 10\n\
 # Mostrar la URL pública\n\
 echo "Ngrok is starting... Check /app/ngrok.log for details"\n\
 # Iniciar la aplicación principal\n\
-exec npx tsx ./src/user/main.ts run start:hex' > /app/start.sh \
+exec npx tsx ./src/main.ts run start:hex' > /app/start.sh \
     && chmod +x /app/start.sh
 
 # Mantener el contenedor en ejecución para trabajo manual

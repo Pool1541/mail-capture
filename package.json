@@ -3,8 +3,8 @@
   "version": "0.0.1",
   "description": "",
   "scripts": {
-    "start:hex": "npx tsx --env-file .env.development ./src/user/main.ts",
-    "dev:hex": "npx tsx --watch --env-file .env.development ./src/user/main.ts",
+    "start:hex": "npx tsx --env-file .env.development ./src/main.ts",
+    "dev:hex": "npx tsx --watch --env-file .env.development ./src/main.ts",
     "start": "node --env-file .env dist/index.js",
     "dev": "tsx --watch --env-file .env.development src/index.ts",
     "dev:staging": "tsx --watch --env-file .env.staging src/index.ts",
