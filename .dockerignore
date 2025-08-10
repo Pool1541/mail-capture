@@ -1,0 +1,9 @@
+.vscode/
+.github/
+.husky/
+node_modules/
+coverage/
+docs/
+prompts/
+.env
+.env.*
