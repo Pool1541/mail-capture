@@ -5,5 +5,5 @@ export {
   MissingAccessTokenError,
   AccessTokenError,
   AccessTokenExpiredError,
+  InvalidAccessTokenAttributeError,
 } from "./access-token-errors";
-export { InvalidAttributeError } from "./attribute-errors";
