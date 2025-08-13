@@ -41,6 +41,13 @@ export class ValidationError extends BaseApplicationError {
   }
 }
 
+export class InvalidAttributeError extends ValidationError {
+  constructor(module: string, property: string, value: unknown, reason?: string) {
+    const message = reason ? `Invalid ${property}: ${reason}` : `Invalid ${property}`;
+    super(module, property, message, value);
+  }
+}
+
 export class NotFoundError extends BaseApplicationError {
   readonly code = "NOT_FOUND";
   readonly httpStatus = 404;
