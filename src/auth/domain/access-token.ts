@@ -4,7 +4,7 @@ import { AccessTokenIat } from "./value-objects/access-token-iat";
 import { AccessTokenRole } from "./value-objects/access-token-role";
 import { AccessTokenEmail } from "./value-objects/access-token-email";
 import { AccessTokenUserMetadata } from "./value-objects/access-token-user-metadata";
-import { AccessTokenExpiredError } from "./errors/access-token-expired";
+import { AccessTokenExpiredError } from "./errors";
 
 export class AccessToken {
   private readonly id: AccessTokenId;
