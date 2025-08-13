@@ -1,10 +1,10 @@
-import { AccessTokenError } from "../errors/access-token-error";
+import { InvalidAccessTokenAttributeError } from "../errors";
 
 export class AccessTokenRole {
   private readonly value: string;
 
   constructor(value: string) {
-    if (!value) throw new AccessTokenError("Role cannot be empty");
+    if (!value) throw new InvalidAccessTokenAttributeError("role", value, "cannot be empty");
     this.value = value;
   }
 

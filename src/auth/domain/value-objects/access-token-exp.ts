@@ -1,5 +1,5 @@
-import { AccessTokenError } from "../errors/access-token-error";
-import { AccessTokenExpiredError } from "../errors/access-token-expired";
+import { AccessTokenExpiredError } from "../errors";
+import { InvalidAccessTokenAttributeError } from "../errors";
 
 export class AccessTokenExp {
   private value: Date;
@@ -21,11 +21,11 @@ export class AccessTokenExp {
     } else if (typeof value === "string" || typeof value === "number") {
       date = new Date(value);
     } else {
-      throw new AccessTokenError('Invalid type for "exp" attribute, must be Date, string or timestamp');
+      throw new InvalidAccessTokenAttributeError("exp", value, "must be Date, string or timestamp");
     }
 
     if (isNaN(date.getTime())) {
-      throw new AccessTokenError('Invalid date value provided to "exp" attribute');
+      throw new InvalidAccessTokenAttributeError("exp", value, "Invalid date value provided");
     }
 
     return date;

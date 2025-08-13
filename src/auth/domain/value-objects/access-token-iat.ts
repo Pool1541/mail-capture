@@ -1,4 +1,4 @@
-import { AccessTokenError } from "../errors/access-token-error";
+import { InvalidAccessTokenAttributeError } from "../errors";
 
 export class AccessTokenIat {
   private value: Date;
@@ -15,11 +15,11 @@ export class AccessTokenIat {
     } else if (typeof value === "string" || typeof value === "number") {
       date = new Date(value);
     } else {
-      throw new AccessTokenError("Invalid type for Iat, must be Date, string or timestamp");
+      throw new InvalidAccessTokenAttributeError("iat", value, "must be Date, string or timestamp");
     }
 
     if (isNaN(date.getTime())) {
-      throw new AccessTokenError("Invalid date value provided to Iat");
+      throw new InvalidAccessTokenAttributeError("iat", value, "Invalid date value provided");
     }
 
     return date;
