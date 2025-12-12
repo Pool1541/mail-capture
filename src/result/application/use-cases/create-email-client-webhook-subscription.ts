@@ -10,7 +10,7 @@ export class CreateEmailClientWebhookSubscription {
     const payload = {
       changeType: "created",
       clientState: process.env.OUTLOOK_CLIENT_STATE ?? "",
-      notificationUrl: "https://bgw1r9rz-8080.brs.devtunnels.ms/result/webhook",
+      notificationUrl: process.env.OUTLOOK_NOTIFICATION_URL ?? "",
       resource: `users/${process.env.EMAIL ?? ""}/messages`,
       expirationDateTime: fiveDaysFromNow.toISOString(),
     };
@@ -31,7 +31,7 @@ export class CreateEmailClientWebhookSubscription {
 
       if (!response.ok) {
         const errorData = await response.json();
-        console.log(errorData);
+        console.log("MS webook error:", errorData);
         throw new Error(`Error creating webhook subscription: ${response.status.toString()} - ${response.statusText}`);
       }
 
