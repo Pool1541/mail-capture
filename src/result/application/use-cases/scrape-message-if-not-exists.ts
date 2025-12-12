@@ -6,9 +6,8 @@ import { type IEmailClientService } from "@/result/domain/contracts/email-client
 
 import { Result } from "@/result/domain/result";
 import { UserId } from "@/result/domain/value-objects/user-id";
-import { MessageNotFoundError } from "@/result/domain/errors/message-not-found-error";
-import { UnauthorizedSenderError } from "@/result/domain/errors/unauthorized-sender-error";
-import { MessageAlreadyProcessedError } from "@/result/domain/errors/message-already-processed-error";
+import { ExternalServiceError } from "@/shared/domain/errors/common-errors";
+import { MessageNotFoundError, UnauthorizedSenderError, MessageAlreadyProcessedError } from "@/result/domain/errors";
 
 export class ScrapeMessageIfNotExists {
   constructor(
@@ -19,33 +18,43 @@ export class ScrapeMessageIfNotExists {
   ) {}
 
   async execute(messageId: string): Promise<void> {
-    const result = await this.resultRepository.findByMessageId(messageId);
+    try {
+      const result = await this.resultRepository.findByMessageId(messageId);
 
-    if (result) throw new MessageAlreadyProcessedError(messageId);
+      if (result) throw new MessageAlreadyProcessedError(messageId);
 
-    const message = await this.emailClientService.getMessageById(messageId);
+      const message = await this.emailClientService.getMessageById(messageId);
 
-    if (!message) throw new MessageNotFoundError();
+      if (!message) throw new MessageNotFoundError(messageId);
 
-    const user = await this.userRepository.findByEmail(message.sender.emailAddress.address);
+      const user = await this.userRepository.findByEmail(message.sender.emailAddress.address);
 
-    if (!user) {
-      throw new UnauthorizedSenderError();
+      if (!user) {
+        throw new UnauthorizedSenderError(message.sender.emailAddress.address);
+      }
+
+      const newResult = Result.create({
+        emailClient: message.sender.emailAddress.address.includes("hotmail") ? "hotmail" : "gmail",
+        messageId: message.id,
+        userId: new UserId(user.requireId().getValue()),
+      });
+
+      const messageString: QueueMessageBody = {
+        messageId: message.id,
+        sender: message.sender.emailAddress.address,
+        subject: message.subject,
+      };
+
+      await this.resultRepository.save(newResult);
+      await this.queueService.sendMessage(messageString);
+    } catch (error) {
+      // Re-lanzar errores conocidos del dominio
+      if (error instanceof MessageAlreadyProcessedError || error instanceof MessageNotFoundError || error instanceof UnauthorizedSenderError) {
+        throw error;
+      }
+
+      // Envolver errores inesperados
+      throw new ExternalServiceError("RESULT", "ScrapeMessageIfNotExists", "Failed to process message", error);
     }
-
-    const newResult = Result.create({
-      emailClient: message.sender.emailAddress.address.includes("hotmail") ? "hotmail" : "gmail",
-      messageId: message.id,
-      userId: new UserId(user.requireId().getValue()),
-    });
-
-    const messageString: QueueMessageBody = {
-      messageId: message.id,
-      sender: message.sender.emailAddress.address,
-      subject: message.subject,
-    };
-
-    await this.resultRepository.save(newResult);
-    await this.queueService.sendMessage(messageString);
   }
 }
