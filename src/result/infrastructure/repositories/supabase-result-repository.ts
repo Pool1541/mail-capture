@@ -9,6 +9,7 @@ import { UserId } from "../../domain/value-objects/user-id";
 import { ResultId } from "../../domain/value-objects/result-id";
 import { ResultOpened } from "../../domain/value-objects/result-opened";
 import { ResultCreatedAt } from "../../domain/value-objects/created-at";
+import { RepositoryError } from "@/shared/domain/errors/common-errors";
 
 export class SupabaseResultRepository implements ResultRepository {
   private supabase: SupabaseClient<Database>;
@@ -18,73 +19,109 @@ export class SupabaseResultRepository implements ResultRepository {
   }
 
   async listAll(): Promise<Result[]> {
-    const { data, error } = await this.supabase.from("results").select("*");
+    try {
+      const { data, error } = await this.supabase.from("results").select("*");
 
-    if (error) {
-      console.log(error);
-      throw error;
+      if (error) {
+        throw new RepositoryError("RESULT", `Failed to list results: ${error.message}`, error);
+      }
+
+      return data.map((item) => this.mapToDomain(item));
+    } catch (error) {
+      if (error instanceof RepositoryError) throw error;
+      throw new RepositoryError("RESULT", "Unexpected error listing results", error);
     }
-
-    return data.map((item) => this.mapToDomain(item));
   }
 
   async findByMessageId(messageId: string): Promise<Result | null> {
-    const { data, error } = await this.supabase.from("results").select("*").eq("message_id", messageId).single();
+    try {
+      const { data, error } = await this.supabase.from("results").select("*").eq("message_id", messageId).single();
 
-    if (error) {
-      console.log(error);
-      return null;
+      if (error) {
+        // Error de "no encontrado" es esperado, no es un error de repositorio
+        if (error.code === "PGRST116") return null;
+        throw new RepositoryError("RESULT", `Failed to find result by message ID: ${error.message}`, error);
+      }
+
+      return this.mapToDomain(data);
+    } catch (error) {
+      if (error instanceof RepositoryError) throw error;
+      throw new RepositoryError("RESULT", "Unexpected error finding result by message ID", error);
     }
-
-    return this.mapToDomain(data);
   }
 
   async delete(id: string): Promise<void> {
-    const { error } = await this.supabase.from("results").delete().eq("id", id);
+    try {
+      const { error } = await this.supabase.from("results").delete().eq("id", id);
 
-    if (error) throw error;
+      if (error) {
+        throw new RepositoryError("RESULT", `Failed to delete result: ${error.message}`, error);
+      }
+    } catch (error) {
+      if (error instanceof RepositoryError) throw error;
+      throw new RepositoryError("RESULT", "Unexpected error deleting result", error);
+    }
   }
 
   async update(result: Result): Promise<void> {
-    const id = result.getId()?.getValue();
+    try {
+      const id = result.getId()?.getValue();
 
-    if (!id) {
-      throw new Error("Result ID is required for update");
+      if (!id) {
+        throw new RepositoryError("RESULT", "Result ID is required for update");
+      }
+
+      const { error } = await this.supabase
+        .from("results")
+        .update({
+          opened: result.getOpened().getValue(),
+          result_url: result.getResultUrl(),
+        })
+        .eq("id", id);
+
+      if (error) {
+        throw new RepositoryError("RESULT", `Failed to update result: ${error.message}`, error);
+      }
+    } catch (error) {
+      if (error instanceof RepositoryError) throw error;
+      throw new RepositoryError("RESULT", "Unexpected error updating result", error);
     }
-
-    const { error } = await this.supabase
-      .from("results")
-      .update({
-        opened: result.getOpened().getValue(),
-        result_url: result.getResultUrl(),
-      })
-      .eq("id", id);
-
-    if (error) throw error;
   }
 
   async save(result: Result): Promise<void> {
-    const { error } = await this.supabase.from("results").insert([
-      {
-        opened: result.getOpened().getValue(),
-        email_client: result.getEmailClient(),
-        uid: result.getUserId().getValue(),
-        message_id: result.getMessageId(),
-      },
-    ]);
+    try {
+      const { error } = await this.supabase.from("results").insert([
+        {
+          opened: result.getOpened().getValue(),
+          email_client: result.getEmailClient(),
+          uid: result.getUserId().getValue(),
+          message_id: result.getMessageId(),
+        },
+      ]);
 
-    if (error) throw error;
+      if (error) {
+        throw new RepositoryError("RESULT", `Failed to save result: ${error.message}`, error);
+      }
+    } catch (error) {
+      if (error instanceof RepositoryError) throw error;
+      throw new RepositoryError("RESULT", "Unexpected error saving result", error);
+    }
   }
 
   async findById(id: string): Promise<Result | null> {
-    const { data, error } = await this.supabase.from("results").select("*").eq("id", id).single();
+    try {
+      const { data, error } = await this.supabase.from("results").select("*").eq("id", id).single();
 
-    if (error) {
-      console.log(error);
-      return null;
+      if (error) {
+        if (error.code === "PGRST116") return null;
+        throw new RepositoryError("RESULT", `Failed to find result by ID: ${error.message}`, error);
+      }
+
+      return this.mapToDomain(data);
+    } catch (error) {
+      if (error instanceof RepositoryError) throw error;
+      throw new RepositoryError("RESULT", "Unexpected error finding result by ID", error);
     }
-
-    return this.mapToDomain(data);
   }
 
   private mapToDomain(data: SupabaseResultEntity): Result {
