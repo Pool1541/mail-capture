@@ -15,11 +15,11 @@ export class ResultCreatedAt {
     } else if (typeof value === "string" || typeof value === "number") {
       date = new Date(value);
     } else {
-      throw new ResultError("Invalid type for createdAt, must be Date, string or timestamp");
+      throw new ResultError("createdAt", "Invalid type for createdAt, must be Date, string or timestamp");
     }
 
     if (isNaN(date.getTime())) {
-      throw new ResultError("Invalid date value provided to createdAt");
+      throw new ResultError("createdAt", "Invalid date value provided to createdAt");
     }
 
     return date;
