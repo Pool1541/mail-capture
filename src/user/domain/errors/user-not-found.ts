@@ -1,7 +1,7 @@
-export class UserNotFoundError extends Error {
-  constructor(message?: string) {
-    super(message ?? "User not found");
-    this.name = "UserNotFoundError";
-    Object.setPrototypeOf(this, UserNotFoundError.prototype);
+import { NotFoundError } from "@/shared/domain/errors/common-errors";
+
+export class UserNotFoundError extends NotFoundError {
+  constructor(identifier?: string) {
+    super("USER", "User", identifier);
   }
 }

@@ -1,7 +1,10 @@
-export class UserError extends Error {
+import { BaseApplicationError } from "@/shared/domain/errors/base-application-error";
+
+export class UserError extends BaseApplicationError {
+  readonly code = "INVALID_USER";
+  readonly httpStatus = 400;
+
   constructor(message?: string) {
-    super(message ?? "Invalid User");
-    this.name = "UserError";
-    Object.setPrototypeOf(this, UserError.prototype);
+    super("USER", message ?? "Invalid User");
   }
 }
