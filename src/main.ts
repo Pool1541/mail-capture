@@ -4,6 +4,7 @@ import express, { type NextFunction, type Request, type Response } from "express
 import { userRouter } from "@/user/infrastructure/express-user-router";
 import { authRouter } from "@/auth/infrastructure/express-auth-router";
 import { resultRouter } from "@/result/infrastructure/express-result-router";
+import { globalErrorHandler } from "@/shared/infrastructure/middleware/global-error-handler";
 import { ScrapperWorker } from "@/result/infrastructure/workers/scrapper-worker";
 
 const scrapperWorker = new ScrapperWorker();
@@ -17,18 +18,17 @@ app.use("/auth", authRouter);
 app.use("/result", resultRouter);
 
 app.use((req: Request, res: Response) => {
-  res.status(404).json({ message: "Route not found" });
+  res.status(404).json({
+    error: {
+      code: "ROUTE_NOT_FOUND",
+      message: "Route not found",
+      path: req.path,
+      method: req.method,
+    },
+  });
 });
 
-app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  if (err instanceof Error) {
-    console.error(err.stack);
-    res.status(500).json({ message: err.message });
-    return;
-  }
-  console.error(err);
-  res.status(500).json({ message: "Something went wrong" });
-});
+app.use(globalErrorHandler);
 
 scrapperWorker.start();
 
