@@ -3,6 +3,8 @@ import jwt from "jsonwebtoken";
 import type { AccessTokenPayload, IJwtService } from "../../domain/contracts/jwt-service";
 
 import { AccessToken } from "../../domain/access-token";
+import { InternalSystemError } from "@/shared/domain/errors";
+import { AccessTokenError, AccessTokenExpiredError } from "@/auth/domain/errors";
 
 export async function jwtVerify<T>(token: string, secret: string): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -22,12 +24,16 @@ export class JwtService implements IJwtService {
       const accessToken = this.mapPayloadToAccessToken(payload);
       return accessToken;
     } catch (error) {
-      if (error instanceof Error) {
-        console.log(error.message);
-        throw new Error(`JWT verification failed: ${error.message}`);
-      }
-      throw new Error("JWT verification failed: Unknown error");
+      this.handleJsonWebTokenError(error);
     }
+  }
+
+  private handleJsonWebTokenError(error: unknown): never {
+    if (error instanceof jwt.JsonWebTokenError) throw new AccessTokenError(error.message);
+    if (error instanceof jwt.TokenExpiredError) throw new AccessTokenExpiredError(error.message);
+    if (error instanceof jwt.NotBeforeError) throw new AccessTokenError(error.message);
+
+    throw new InternalSystemError("AUTH", "JWT verification", "Unexpected internal error during token verification", error);
   }
 
   private mapPayloadToAccessToken(payload: AccessTokenPayload): AccessToken {
