@@ -1,7 +1,7 @@
-export class ResultError extends Error {
-  constructor(message?: string) {
-    super(message ?? "Invalid Result");
-    this.name = "ResultError";
-    Object.setPrototypeOf(this, ResultError.prototype);
+import { ValidationError } from "@/shared/domain/errors/common-errors";
+
+export class ResultError extends ValidationError {
+  constructor(field: string, message?: string) {
+    super("RESULT", field, message ?? "Invalid Result");
   }
 }

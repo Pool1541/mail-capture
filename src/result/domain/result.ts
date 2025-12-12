@@ -50,7 +50,7 @@ export class Result {
   }
 
   requireId(): ResultId {
-    if (!this.id) throw new ResultError("Result must be persisted to access ID");
+    if (!this.id) throw new ResultError("id", "Result must be persisted to access ID");
 
     return this.id;
   }
@@ -76,7 +76,7 @@ export class Result {
   }
 
   requireResultUrl(): string {
-    if (!this.resultUrl) throw new ResultError("Result must be persisted to access URL");
+    if (!this.resultUrl) throw new ResultError("resultUrl", "Result must be persisted to access URL");
 
     return this.resultUrl;
   }
