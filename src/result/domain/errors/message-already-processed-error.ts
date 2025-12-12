@@ -1,7 +1,7 @@
-export class MessageAlreadyProcessedError extends Error {
+import { ConflictError } from "@/shared/domain/errors/common-errors";
+
+export class MessageAlreadyProcessedError extends ConflictError {
   constructor(messageId: string) {
-    super(`Message ${messageId} already processed`);
-    this.name = "MessageAlreadyProcessedError";
-    Object.setPrototypeOf(this, MessageAlreadyProcessedError.prototype);
+    super("RESULT", "Message", `Message ${messageId} already processed`, { messageId });
   }
 }

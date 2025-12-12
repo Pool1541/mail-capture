@@ -1,7 +1,7 @@
-export class MessageNotFoundError extends Error {
-  constructor(message?: string) {
-    super(message ?? "Message not found");
-    this.name = "MessageNotFoundError";
-    Object.setPrototypeOf(this, MessageNotFoundError.prototype);
+import { NotFoundError } from "@/shared/domain/errors/common-errors";
+
+export class MessageNotFoundError extends NotFoundError {
+  constructor(messageId?: string) {
+    super("RESULT", "Message", messageId);
   }
 }

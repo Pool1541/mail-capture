@@ -1,7 +1,7 @@
-export class UnauthorizedSenderError extends Error {
-  constructor(message?: string) {
-    super(message ?? "Unauthorized sender");
-    this.name = "UnauthorizedSenderError";
-    Object.setPrototypeOf(this, UnauthorizedSenderError.prototype);
+import { ForbiddenError } from "@/shared/domain/errors/common-errors";
+
+export class UnauthorizedSenderError extends ForbiddenError {
+  constructor(sender?: string) {
+    super("RESULT", sender ? `Unauthorized sender: ${sender}` : "Unauthorized sender", { sender });
   }
 }
