@@ -27,6 +27,7 @@ export class SupabaseUserRepository implements UserRepository {
   }
 
   async findById(id: string): Promise<User | null> {
+    if (!id) return null;
     const { data, error } = await this.supabase.from("users").select("*").eq("id", id).single();
 
     if (error) return null;
@@ -35,6 +36,8 @@ export class SupabaseUserRepository implements UserRepository {
   }
 
   async findByEmail(email: string): Promise<User | null> {
+    if (!email) return null;
+
     const { data, error } = await this.supabase.from("users").select("*").eq("email", email).single();
 
     if (error) {
@@ -64,6 +67,7 @@ export class SupabaseUserRepository implements UserRepository {
   }
 
   async existsByEmail(email: string): Promise<boolean> {
+    if (!email) return false;
     const { data, error } = await this.supabase.from("users").select("id").eq("email", email).maybeSingle();
 
     if (error) {
