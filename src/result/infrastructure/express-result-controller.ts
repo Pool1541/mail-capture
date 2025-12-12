@@ -35,21 +35,21 @@ export class ExpressResultController {
         return;
       }
 
-      void ServiceContainer.result.ScrapeMessageIfNotExists.execute(messageId);
-
+      // Ejecutar de forma asíncrona pero manejar errores apropiadamente
+      ServiceContainer.result.ScrapeMessageIfNotExists.execute(messageId).catch((error: unknown) => {
+        if (error instanceof MessageAlreadyProcessedError) {
+          console.error("Message already processed:", error.message);
+        } else if (error instanceof UnauthorizedSenderError) {
+          console.error("Unauthorized sender:", error.message);
+        } else {
+          console.error("Error processing webhook:", error);
+        }
+      });
       res.status(200).json({ message: "Webhook processed successfully" });
     } catch (error) {
-      // Este controlador no enviará estos errores al usuario ya que el caso de uso se está ejecutando síncronamente `void`
-      // pero aún así se registrarán en los logs
-      if (error instanceof MessageAlreadyProcessedError) {
-        console.error(error.message);
-        return;
-      } else if (error instanceof UnauthorizedSenderError) {
-        console.error(error.message);
-        return;
-      } else {
-        console.log(error);
-      }
+      // Captura errores síncronos solamente (validación, parsing, etc.)
+      console.error("Synchronous error in webhook handler:", error);
+      res.status(500).json({ message: "Internal server error" });
     }
   }
 
