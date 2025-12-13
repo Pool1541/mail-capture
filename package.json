@@ -4,8 +4,12 @@
   "description": "",
   "scripts": {
     "start": "node --env-file .env dist/src/index.js",
+    "start:validation-worker": "node --env-file .env dist/src/validation-worker-main.js",
+    "start:scraper-worker": "node --env-file .env dist/src/scraper-worker-main.js",
     "preview": "tsx --env-file .env ./src/index.ts",
     "dev": "tsx --watch --env-file .env.development src/index.ts",
+    "dev:validation-worker": "tsx --watch --env-file .env.development src/validation-worker-main.ts",
+    "dev:scraper-worker": "tsx --watch --env-file .env.development src/scraper-worker-main.ts",
     "dev:staging": "tsx --watch --env-file .env.staging src/index.ts",
     "dev:prod": "tsx --watch --env-file .env.production src/index.ts",
     "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
