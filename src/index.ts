@@ -4,11 +4,10 @@ import { userRouter } from "@/user/infrastructure/express-user-router";
 import { authRouter } from "@/auth/infrastructure/express-auth-router";
 import { resultRouter } from "@/result/infrastructure/express-result-router";
 import { globalErrorHandler } from "@/shared/infrastructure/middleware/global-error-handler";
-import { ScrapperWorker } from "@/result/infrastructure/workers/scrapper-worker";
+import { NotFoundError } from "./shared/domain/errors";
 import helmet from "helmet";
 import morgan from "morgan";
 import cors from "cors";
-import { NotFoundError } from "./shared/domain/errors";
 
 class Server {
   private app: Application;
@@ -49,13 +48,10 @@ class Server {
 
   public listen(): void {
     this.app.listen(this.port, () => {
-      console.log(`Server is running on port ${this.port}`);
+      console.log(`🚀 Server is running on port ${this.port}`);
     });
   }
 }
 
 const server = new Server();
 server.listen();
-
-const worker = new ScrapperWorker();
-worker.start();

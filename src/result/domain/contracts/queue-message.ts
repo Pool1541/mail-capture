@@ -11,6 +11,12 @@ export interface QueueMessage {
 
 export interface QueueMessageBody {
   messageId: string;
+  sender?: string;
+  subject?: string;
+}
+
+export interface ScraperQueueMessageBody {
+  messageId: string;
   sender: string;
   subject: string;
 }

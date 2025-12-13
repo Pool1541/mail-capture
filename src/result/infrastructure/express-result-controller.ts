@@ -31,21 +31,16 @@ export class ExpressResultController {
 
       if (clientState !== process.env.OUTLOOK_CLIENT_STATE) {
         console.log("Invalid client state:", { clientState, expected: process.env.OUTLOOK_CLIENT_STATE });
-        res.status(400).json({ message: "Invalid client state" });
+        res.status(401).json({ message: "Invalid client state" });
         return;
       }
 
-      // Ejecutar de forma asíncrona pero manejar errores apropiadamente
-      ServiceContainer.result.ScrapeMessageIfNotExists.execute(messageId).catch((error: unknown) => {
-        if (error instanceof MessageAlreadyProcessedError) {
-          console.error("Message already processed:", error.message);
-        } else if (error instanceof UnauthorizedSenderError) {
-          console.error("Unauthorized sender:", error.message);
-        } else {
-          console.error("Error processing webhook:", error);
-        }
+      // Solo enviar messageId a la cola de validación - responder inmediatamente
+      ServiceContainer.result.validationQueueService.sendMessage({ messageId }).catch((error: unknown) => {
+        console.error("Error sending message to validation queue:", error);
       });
-      res.status(200).json({ message: "Webhook processed successfully" });
+
+      res.status(202).json({ message: "Notification received" });
     } catch (error) {
       // Captura errores síncronos solamente (validación, parsing, etc.)
       console.error("Synchronous error in webhook handler:", error);

@@ -6,15 +6,14 @@ import { type Database } from "./types/supabase";
 import { JwtService } from "@/auth/infrastructure/services/jwt-service";
 import { SignUpWebhook } from "@/auth/application/use-cases/sign-up-webhook";
 import { OutlookService } from "@/result/infrastructure/services/outlook-service";
-import { SqsQueueService } from "@/result/infrastructure/services/sqs-queue-service";
+import { ValidationQueueService } from "@/result/infrastructure/services/validation-queue-service";
+import { ScraperQueueService } from "@/result/infrastructure/services/scraper-queue-service";
 import { SendWelcomeEmail } from "@/auth/application/use-cases/send-welcome-email";
 import { CreateAccessToken } from "@/result/application/use-cases/create-access-token";
 import { ResendEmailService } from "./services/resend-email-service";
 import { ValidateAccessToken } from "@/auth/application/use-cases/validate-access-token";
 import { RegisterInWhitelist } from "@/auth/application/use-cases/register-in-whitelist";
 import { SupabaseUserRepository } from "@/user/infrastructure/repositories/supabase-user-repository";
-import { ScrapeMessageIfNotExists } from "@/result/application/use-cases/scrape-message-if-not-exists";
-import { SupabaseResultRepository } from "@/result/infrastructure/repositories/supabase-result-repository";
 import { CreateEmailClientWebhookSubscription } from "@/result/application/use-cases/create-email-client-webhook-subscription";
 
 const jwtService = new JwtService(process.env.SUPABASE_JWT_SECRET ?? "");
@@ -26,8 +25,8 @@ const emailService = new ResendEmailService(resend);
 const registerInWhitelist = new RegisterInWhitelist(userRepository);
 const sendWelcomeEmail = new SendWelcomeEmail(emailService);
 const outlookService = new OutlookService();
-const resultRepository = new SupabaseResultRepository(supabase);
-const queueService = new SqsQueueService();
+const validationQueueService = new ValidationQueueService();
+const scraperQueueService = new ScraperQueueService();
 
 export const ServiceContainer = {
   auth: {
@@ -40,6 +39,7 @@ export const ServiceContainer = {
   result: {
     createEmailClientWebhookSubscription: new CreateEmailClientWebhookSubscription(outlookService),
     createAccessToken: new CreateAccessToken(outlookService),
-    ScrapeMessageIfNotExists: new ScrapeMessageIfNotExists(resultRepository, outlookService, userRepository, queueService),
+    validationQueueService,
+    scraperQueueService,
   },
 };

@@ -1,13 +1,18 @@
 import { runScrapper } from "../services/scrapper-service";
-import { deleteMessageCommand, recieveMessageCommand } from "../aws/sqs-commands";
+import { type QueueService } from "@/result/domain/contracts/queue-service";
+import { type ScraperQueueMessageBody } from "@/result/domain/contracts/queue-message";
 
 export class ScrapperWorker {
   private intervalId: NodeJS.Timeout | string | number | undefined;
 
+  constructor(private readonly scraperQueueService: QueueService) {}
+
   start() {
+    console.log("🎨 Scraper worker started, polling for messages every 30 seconds.");
+
     const intervalId = setInterval(() => {
       this.processMessages().catch((error: unknown) => {
-        console.error("Unhandled error in message processing:", error);
+        console.error("Unhandled error in scraper worker:", error);
       });
     }, 30000);
 
@@ -20,44 +25,47 @@ export class ScrapperWorker {
 
   private async processMessages(): Promise<void> {
     try {
-      const response = await recieveMessageCommand();
+      const response = await this.scraperQueueService.receiveMessages();
 
       if (response.Messages?.length) {
         for (const message of response.Messages) {
-          // Validar que el mensaje tenga body
           if (!message.Body) {
             console.warn("Message without body received, skipping...");
             continue;
           }
 
-          let body: unknown;
-          console.log("Processing message:", message);
+          let body: ScraperQueueMessageBody;
+          console.log("🎬 Processing scraper message:", message.MessageId);
+
           try {
-            body = JSON.parse(message.Body) as unknown;
+            body = JSON.parse(message.Body) as ScraperQueueMessageBody;
           } catch (parseError) {
             console.error("Error parsing message body:", parseError);
-            // Eliminar mensaje malformado para evitar procesamiento infinito
+            // Eliminar mensaje malformado
             if (message.ReceiptHandle) {
-              await deleteMessageCommand(message.ReceiptHandle);
+              await this.scraperQueueService.deleteMessage(message.ReceiptHandle);
             }
             continue;
           }
 
           try {
+            // Ejecutar scraping con Playwright
             await runScrapper(body);
 
-            // Solo eliminar si tiene ReceiptHandle
+            // Eliminar mensaje después de scraping exitoso
             if (message.ReceiptHandle) {
-              await deleteMessageCommand(message.ReceiptHandle);
+              await this.scraperQueueService.deleteMessage(message.ReceiptHandle);
             }
+
+            console.log(`✅ Scraping completed for message ${body.messageId}`);
           } catch (error) {
-            console.error("Error processing message:", error);
-            // Considerar implementar dead letter queue o retry logic aquí
+            console.error("Error processing scraper message:", error);
+            // No eliminar - dejar que reintente o vaya a DLQ
           }
         }
       }
     } catch (error) {
-      console.error("Error in scrapper worker:", error);
+      console.error("Error in scraper worker:", error);
     }
   }
 }
