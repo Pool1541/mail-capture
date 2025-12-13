@@ -4,6 +4,7 @@
   "description": "",
   "scripts": {
     "start": "node --env-file .env dist/src/index.js",
+    "preview": "tsx --env-file .env ./src/index.ts",
     "dev": "tsx --watch --env-file .env.development src/index.ts",
     "dev:staging": "tsx --watch --env-file .env.staging src/index.ts",
     "dev:prod": "tsx --watch --env-file .env.production src/index.ts",
