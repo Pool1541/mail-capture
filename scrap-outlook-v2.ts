@@ -122,7 +122,7 @@ export default async function run({ subject, sender }: { subject?: string; sende
   await mainPage.keyboard.press("Enter");
   console.log(`🔍 Buscando mensaje con asunto "${subjectToFind}"...`);
   // Esperar a que los resultados de búsqueda se carguen
-  await mainPage.waitForSelector('[data-app-section="MessageList"] div[aria-label]', { timeout: 30000 });
+  await mainPage.waitForSelector('[data-app-section="MessageList"]', { timeout: 30000 });
 
   // Selector del email con el asunto específico
   const emailSelector = `div[aria-label*="${subjectToFind}"]`;
