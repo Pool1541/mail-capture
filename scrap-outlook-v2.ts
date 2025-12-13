@@ -128,7 +128,9 @@ export default async function run({ subject, sender }: { subject?: string; sende
   const emailSelector = `div[aria-label*="${subjectToFind}"]`;
   // Hacer click en el elemento del email
   await mainPage.waitForSelector(emailSelector, { timeout: 30000 });
-  await mainPage.locator(emailSelector).click();
+
+  // Solo hacer click en el primer resultado que coincida
+  await mainPage.locator(emailSelector).first().click();
   console.log(`🔍 Mensaje con asunto "${subjectToFind}" encontrado y abierto.`);
 
   // Sector para extraer el contenido del email
