@@ -1,19 +1,22 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import * as fs from "fs";
-import * as path from "path";
-
-import { type INotification } from "../domain/contracts/notification";
 import type { NextFunction, Request, Response } from "express";
-
-import { ServiceContainer } from "@/shared/infrastructure/service-container";
-import { UnauthorizedSenderError } from "../domain/errors/unauthorized-sender-error";
-import { MessageAlreadyProcessedError } from "../domain/errors/message-already-processed-error";
+import { type CreateEmailClientWebhookSubscription } from "../application/use-cases/create-email-client-webhook-subscription";
+import { type CreateAccessToken } from "../application/use-cases/create-access-token";
+import { type INotification } from "../domain/contracts/notification";
+import { type QueueService } from "../domain/contracts/queue-service";
+import { type Logger } from "@/shared/domain/contracts/logger";
 
 interface WebhookRequest extends Request {
   body: INotification;
 }
 
 export class ExpressResultController {
+  constructor(
+    private readonly logger: Logger,
+    private readonly createAccessToken: CreateAccessToken,
+    private readonly validationQueueService: QueueService,
+    private readonly createEmailClientWebhookSubscription: CreateEmailClientWebhookSubscription,
+  ) {}
   emailClientWebhook(req: WebhookRequest, res: Response, next: NextFunction) {
     try {
       const validationToken = req.query.validationToken as string | undefined;
@@ -36,21 +39,28 @@ export class ExpressResultController {
       }
 
       // Solo enviar messageId a la cola de validación - responder inmediatamente
-      ServiceContainer.result.validationQueueService.sendMessage({ messageId }).catch((error: unknown) => {
-        console.error("Error sending message to validation queue:", error);
+      this.validationQueueService.sendMessage({ messageId }).catch((error: unknown) => {
+        this.logger.error("Error sending message to validation queue", { messageId, error });
+      });
+
+      this.logger.info("Webhook notification processed", {
+        messageId,
+        originalUrl: req.originalUrl,
+        endpoint: `${req.method} ${req.baseUrl}`,
+        timestamp: new Date().toISOString(),
       });
 
       res.status(202).json({ message: "Notification received" });
     } catch (error) {
       // Captura errores síncronos solamente (validación, parsing, etc.)
-      console.error("Synchronous error in webhook handler:", error);
+      this.logger.error("Synchronous error in webhook handler:", { error, messageId: req.body.value[0]?.resourceData.id ?? "unknown" });
       res.status(500).json({ message: "Internal server error" });
     }
   }
 
   async getAccessToken(req: Request, res: Response, next: NextFunction) {
     try {
-      const accessToken = await ServiceContainer.result.createAccessToken.execute();
+      const accessToken = await this.createAccessToken.execute();
       res.status(200).json({ accessToken });
     } catch (error) {
       next(error);
@@ -59,40 +69,13 @@ export class ExpressResultController {
 
   async requestWebhookSubscription(req: Request, res: Response, next: NextFunction) {
     try {
-      const webhookSubscriptionData = await ServiceContainer.result.createEmailClientWebhookSubscription.execute();
+      const webhookSubscriptionData = await this.createEmailClientWebhookSubscription.execute();
 
       console.log(webhookSubscriptionData);
 
       res.status(200).json({ message: "Webhook subscription created successfully", data: webhookSubscriptionData });
     } catch (error) {
       next(error);
-    }
-  }
-
-  private saveLogFile(): void {
-    try {
-      const now = new Date();
-      const timestamp = now.getTime().toString();
-      const currentDateTime = now.toISOString().replace("T", " ").replace("Z", "");
-
-      // Crear carpeta logs si no existe
-      const logsDir = path.join(process.cwd(), "logs");
-      if (!fs.existsSync(logsDir)) {
-        fs.mkdirSync(logsDir, { recursive: true });
-      }
-
-      // Crear archivo con timestamp como nombre
-      const fileName = `${timestamp}.txt`;
-      const filePath = path.join(logsDir, fileName);
-
-      // Contenido del archivo con la hora exacta
-      const content = `Archivo creado el: ${currentDateTime}\nTimestamp: ${timestamp}`;
-
-      fs.writeFileSync(filePath, content, "utf8");
-
-      console.log(`Archivo de log guardado: ${filePath}`);
-    } catch (error) {
-      console.error("Error al guardar archivo de log:", error);
     }
   }
 }
