@@ -1,8 +1,8 @@
 import { Router } from "express";
 
-import { ExpressResultController } from "./express-result-controller";
+import { ServiceContainer } from "@/shared/infrastructure/service-container";
 
-const controller = new ExpressResultController();
+const controller = ServiceContainer.controllers.resultController;
 const resultRouter = Router();
 
 resultRouter.get("/request-webhook", async (req, res, next) => {
