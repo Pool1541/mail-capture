@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import type { NextFunction, Request, Response } from "express";
+import * as Sentry from "@sentry/node";
 import { BaseApplicationError } from "../../domain/errors/base-application-error";
 
 export function globalErrorHandler(error: unknown, req: Request, res: Response, next: NextFunction): void {
@@ -13,6 +14,19 @@ export function globalErrorHandler(error: unknown, req: Request, res: Response, 
       url: req.url,
       method: req.method,
     });
+
+    // Solo reportar a Sentry errores del servidor (>= 500)
+    if (error.httpStatus >= 500) {
+      Sentry.captureException(error, {
+        extra: {
+          module: error.module,
+          code: error.code,
+          details: error.details,
+          url: req.url,
+          method: req.method,
+        },
+      });
+    }
 
     res.status(error.httpStatus).json({
       error: {
@@ -28,7 +42,7 @@ export function globalErrorHandler(error: unknown, req: Request, res: Response, 
     return;
   }
 
-  // Manejar errores nativos de JavaScript
+  // Manejar errores nativos de JavaScript (siempre son 500)
   if (error instanceof Error) {
     console.error("Unhandled Error:", {
       name: error.name,
@@ -36,6 +50,14 @@ export function globalErrorHandler(error: unknown, req: Request, res: Response, 
       stack: error.stack,
       url: req.url,
       method: req.method,
+    });
+
+    // Reportar errores inesperados a Sentry
+    Sentry.captureException(error, {
+      extra: {
+        url: req.url,
+        method: req.method,
+      },
     });
 
     res.status(500).json({
@@ -50,11 +72,19 @@ export function globalErrorHandler(error: unknown, req: Request, res: Response, 
     return;
   }
 
-  // Manejar otros tipos de errores
+  // Manejar otros tipos de errores (siempre son 500)
   console.error("Unknown Error:", {
     error,
     url: req.url,
     method: req.method,
+  });
+
+  // Reportar errores desconocidos a Sentry
+  Sentry.captureException(error, {
+    extra: {
+      url: req.url,
+      method: req.method,
+    },
   });
 
   res.status(500).json({
