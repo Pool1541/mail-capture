@@ -1,13 +1,14 @@
+import "@/shared/infrastructure/monitoring/instrument";
 import express, { Application, urlencoded, type NextFunction, type Request, type Response } from "express";
+import helmet from "helmet";
+import morgan from "morgan";
+import cors from "cors";
 
 import { userRouter } from "@/user/infrastructure/express-user-router";
 import { authRouter } from "@/auth/infrastructure/express-auth-router";
 import { resultRouter } from "@/result/infrastructure/express-result-router";
 import { globalErrorHandler } from "@/shared/infrastructure/middleware/global-error-handler";
 import { NotFoundError } from "./shared/domain/errors";
-import helmet from "helmet";
-import morgan from "morgan";
-import cors from "cors";
 
 class Server {
   private app: Application;
