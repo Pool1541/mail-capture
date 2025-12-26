@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 import { createClient } from "@supabase/supabase-js";
+import * as Sentry from "@sentry/node";
 
 import { type Database } from "./types/supabase";
 
@@ -10,6 +11,7 @@ import { ValidationQueueService } from "@/result/infrastructure/services/validat
 import { ScraperQueueService } from "@/result/infrastructure/services/scraper-queue-service";
 import { SendWelcomeEmail } from "@/auth/application/use-cases/send-welcome-email";
 import { CreateAccessToken } from "@/result/application/use-cases/create-access-token";
+import { SentryLogger } from "./services/sentry-logger";
 import { ResendEmailService } from "./services/resend-email-service";
 import { ValidateAccessToken } from "@/auth/application/use-cases/validate-access-token";
 import { RegisterInWhitelist } from "@/auth/application/use-cases/register-in-whitelist";
@@ -27,6 +29,7 @@ const sendWelcomeEmail = new SendWelcomeEmail(emailService);
 const outlookService = new OutlookService();
 const validationQueueService = new ValidationQueueService();
 const scraperQueueService = new ScraperQueueService();
+const logger = new SentryLogger(Sentry.logger);
 
 export const ServiceContainer = {
   auth: {
@@ -41,5 +44,8 @@ export const ServiceContainer = {
     createAccessToken: new CreateAccessToken(outlookService),
     validationQueueService,
     scraperQueueService,
+  },
+  monitoring: {
+    logger,
   },
 };
