@@ -17,6 +17,7 @@ import { ValidateAccessToken } from "@/auth/application/use-cases/validate-acces
 import { RegisterInWhitelist } from "@/auth/application/use-cases/register-in-whitelist";
 import { SupabaseUserRepository } from "@/user/infrastructure/repositories/supabase-user-repository";
 import { CreateEmailClientWebhookSubscription } from "@/result/application/use-cases/create-email-client-webhook-subscription";
+import { ExpressResultController } from "@/result/infrastructure/express-result-controller";
 
 const jwtService = new JwtService(process.env.SUPABASE_JWT_SECRET ?? "");
 
@@ -31,21 +32,35 @@ const validationQueueService = new ValidationQueueService();
 const scraperQueueService = new ScraperQueueService();
 const logger = new SentryLogger(Sentry.logger);
 
+// Auth use-cases
+const validateAccessToken = new ValidateAccessToken(jwtService);
+const signUpWebhook = new SignUpWebhook(sendWelcomeEmail, registerInWhitelist);
+
+// Result use-cases
+const createEmailClientWebhookSubscription = new CreateEmailClientWebhookSubscription(outlookService);
+const createAccessToken = new CreateAccessToken(outlookService);
+
+// Controllers
+const resultController = new ExpressResultController(logger, createAccessToken, validationQueueService, createEmailClientWebhookSubscription);
+
 export const ServiceContainer = {
   auth: {
-    validateAccessToken: new ValidateAccessToken(jwtService),
-    signUpWebhook: new SignUpWebhook(sendWelcomeEmail, registerInWhitelist),
+    validateAccessToken,
+    signUpWebhook,
   },
   email: {
     emailService,
   },
   result: {
-    createEmailClientWebhookSubscription: new CreateEmailClientWebhookSubscription(outlookService),
-    createAccessToken: new CreateAccessToken(outlookService),
+    createEmailClientWebhookSubscription,
+    createAccessToken,
     validationQueueService,
     scraperQueueService,
   },
   monitoring: {
     logger,
+  },
+  controllers: {
+    resultController,
   },
 };
