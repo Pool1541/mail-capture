@@ -1,10 +1,11 @@
+import type { RequireAtLeastOne } from "@/shared/types";
+
 import { UserId } from "./value-objects/user-id";
 import { ResultId } from "./value-objects/result-id";
 import { ResultError } from "./errors/result-error";
 import { ResultOpened } from "./value-objects/result-opened";
 import { ResultCreatedAt } from "./value-objects/created-at";
-
-export type EmailClient = "hotmail" | "outlook" | "gmail" | "apple_mail";
+import { EmailClient } from "./value-objects/email-client";
 
 export class Result {
   id: ResultId | null;
@@ -91,6 +92,16 @@ export class Result {
     return this.requireId().equals(other.requireId());
   }
 
+  update({ resultUrl, opened }: RequireAtLeastOne<{ resultUrl: string; opened: boolean }, "opened" | "resultUrl">): void {
+    if (typeof resultUrl === "string") {
+      this.resultUrl = resultUrl;
+    }
+
+    if (typeof opened === "boolean") {
+      this.openend = new ResultOpened(opened);
+    }
+  }
+
   toJson(): object {
     return {
       id: this.requireId().getValue(),
@@ -103,11 +114,11 @@ export class Result {
     };
   }
 
-  static create({ emailClient, messageId, userId }: { emailClient: EmailClient; userId: UserId; messageId: string }): Result {
+  static create({ email, messageId, userId }: { email: string; userId: UserId; messageId: string }): Result {
     return new Result({
       createdAt: new ResultCreatedAt(new Date()),
       openend: new ResultOpened(false),
-      emailClient,
+      emailClient: EmailClient.fromEmail(email),
       userId,
       messageId,
     });
