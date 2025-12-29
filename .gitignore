@@ -3,6 +3,9 @@
 .env.*
 !.env.example
 
+# Temporary files
+/tmp
+
 # Dependencies
 /node_modules
 
