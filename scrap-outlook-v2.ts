@@ -2,18 +2,20 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-floating-promises */
+import { mkdir } from "node:fs/promises";
+import { resolve } from "path";
 import { chromium } from "playwright";
 import * as readline from "readline";
 
 const EMAIL = process.env.SCRAPER_EMAIL ?? "";
 const PASSWORD = process.env.SCRAPER_PASSWORD ?? "";
 
-export default async function run({ subject, sender }: { subject?: string; sender?: string }) {
+export default async function run({ subject, sender }: { subject: string; sender: string }) {
   const browser = await chromium.launchPersistentContext("./user-data", { headless: true, locale: "es-ES" });
 
   const mainPage = await browser.newPage();
+  await mainPage.setViewportSize({ width: 1440, height: 800 });
   console.log("🌐 Abriendo outlook.live.com...");
   await mainPage.goto("https://outlook.live.com/mail/", { waitUntil: "domcontentloaded" });
 
@@ -42,10 +44,14 @@ export default async function run({ subject, sender }: { subject?: string; sende
 
       while (stillInLoginPage) {
         try {
-          await mainPage.waitForSelector(`[data-test-id="${EMAIL}"]`, { timeout: 5000 });
+          await mainPage.waitForSelector(`[data-test-id="${EMAIL}"]`, { timeout: 1000 });
+          console.log("Se encontró el email en la lista, haciendo click para ingresar...");
           await mainPage.locator(`[data-test-id="${EMAIL}"]`).click();
+          // [TODO] Puede que después de hacer click en el email, aún pida contraseña y 2FA
+          console.log("Haciendo click en el mail:", EMAIL);
           stillInLoginPage = false;
         } catch (error) {
+          console.log(error);
           stillInLoginPage = false;
         }
       }
@@ -83,18 +89,26 @@ export default async function run({ subject, sender }: { subject?: string; sende
         });
       });
 
+      // Volver atrás y seleccionar la cuenta nuevamente
+      await mainPage.goBack();
+      await mainPage.waitForSelector(`:has-text("${EMAIL}")`, { timeout: 30000 });
+      await mainPage.locator(`[data-test-id="${EMAIL}"]`).click();
+
+      // Esperar a que cargue la página de ingreso del código 2FA
+      await mainPage.waitForURL(
+        (url) => url.href.includes("login.microsoftonline.com/common/login") || url.href.includes("login.microsoftonline.com/common/reprocess"),
+        {
+          timeout: 3000,
+        },
+      );
+
       // Ingresar el código automáticamente
       await mainPage.fill('input[name="otc"]', code as string);
       await mainPage.locator('input[type="submit"][value="Comprobar"]').click();
 
-      // Verifica que la página sea la de 2FA para la intervención manual
-      await mainPage.waitForURL((url) => url.href.includes("login.microsoftonline.com/common/login"), {
-        timeout: 30000, // Le da 30 segundos para que el usuario complete el flujo de 2FA
-      });
-
       // Aquí seleccionamos que queremos mantener la sesión abierta
       await mainPage.waitForURL((url) => url.href.includes("login.microsoftonline.com/common/SAS/ProcessAuth"), {
-        timeout: 30000,
+        timeout: 0, // Espera indefinidamente hasta que el usuario complete el flujo
       });
 
       await mainPage.waitForSelector('input[type="submit"][data-report-event="Signin_Submit"][value="Sí"]', { timeout: 30000 });
@@ -111,10 +125,10 @@ export default async function run({ subject, sender }: { subject?: string; sende
   console.log("📨 Bandeja de entrada cargada correctamente.");
 
   // Buscar mensaje por el asunto
-  let subjectToFind = subject ?? "WOSUB25";
+  let subjectToFind = subject;
   // Recordanto el subject a 28 caracteres por si hay recorte en la vista previa
   subjectToFind = subjectToFind.slice(0, 28);
-  const senderToFind = sender ?? "pool_1541@hotmail.com";
+  const senderToFind = sender;
   const searchBoxSelector = 'input[id="topSearchInput"]';
 
   await mainPage.waitForSelector(searchBoxSelector, { timeout: 30000 });
@@ -133,6 +147,10 @@ export default async function run({ subject, sender }: { subject?: string; sende
   await mainPage.locator(emailSelector).first().click();
   console.log(`🔍 Mensaje con asunto "${subjectToFind}" encontrado y abierto.`);
 
+  // Limpiar el cuadro de búsqueda
+  await mainPage.fill(searchBoxSelector, "");
+  await mainPage.keyboard.press("Enter");
+
   // Sector para extraer el contenido del email
   const emailContentSelector = 'div[id="UniqueMessageBody_1"]';
   await mainPage.waitForSelector(emailContentSelector, { timeout: 30000 });
@@ -142,23 +160,24 @@ export default async function run({ subject, sender }: { subject?: string; sende
 
   // Abre una pestaña en blanco con medidas 768 de ancho para mostrar el contenido del email
   const contentPage = await browser.newPage();
-  await contentPage.setViewportSize({ width: 800, height: 1024 });
+  await contentPage.setViewportSize({ width: 768, height: 1024 });
   await contentPage.setContent(emailContent);
-
-  // Agrega margin: 0 en el body para evitar espacios en blanco alrededor del contenido y remueve scrollbars
-  await contentPage.addStyleTag({ content: "body { margin: 0; }" });
-  await contentPage.addStyleTag({ content: "::-webkit-scrollbar { display: none; }" });
+  await contentPage.addStyleTag({ content: `body { margin: 0; } ::-webkit-scrollbar { display: none; }` });
 
   // Esperar a que el contenido se renderice completamente con un pequeño retraso
-  await contentPage.waitForTimeout(1000);
+  await contentPage.waitForTimeout(3000);
+
+  await mkdir("./tmp", { recursive: true });
+
+  const screenshotPath = resolve("./tmp", `screenshot_${Date.now().toString()}.png`);
 
   // Debe tomar una captura de pantalla del contenido del email
-  await contentPage.screenshot({ path: "email_content.png", fullPage: true });
-  console.log("📸 Captura de pantalla del contenido del mensaje guardada como email_content.png");
-
+  await contentPage.screenshot({ path: screenshotPath, fullPage: true, omitBackground: true });
+  console.log(`📸 Captura de pantalla del contenido del mensaje guardada como ${screenshotPath}`);
   // cerrar el navegador
   await browser.close();
   console.log("✅ Proceso completado.");
+  return screenshotPath;
 }
 
 // if (process.argv[1] === import.meta.filename) {
@@ -167,3 +186,8 @@ export default async function run({ subject, sender }: { subject?: string; sende
 //     process.exit(1);
 //   });
 // }
+
+// run({ sender: "TEST MAIL CASHBACK", subject: "novedades@scotiabank.com.pe" }).catch((err: unknown) => {
+//   console.error("❌ Error:", err);
+//   process.exit(1);
+// });
