@@ -19,4 +19,5 @@ export interface ScraperQueueMessageBody {
   messageId: string;
   sender: string;
   subject: string;
+  uid: string;
 }
