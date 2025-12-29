@@ -1,9 +1,8 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 export interface SendEmailParams {
   to: string[];
   subject: string;
   html: string;
-  variables?: Record<string, any>;
+  variables?: Record<string, unknown>;
 }
 
 export interface EmailService {
