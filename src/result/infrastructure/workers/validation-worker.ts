@@ -1,37 +1,46 @@
+/* eslint-disable @typescript-eslint/no-unnecessary-condition */
 import { type QueueService } from "@/result/domain/contracts/queue-service";
 import { type UserRepository } from "@/user/domain/contracts/user-repository";
 import { type ResultRepository } from "@/result/domain/contracts/result-repository";
-import { type IEmailClientService } from "@/result/domain/contracts/email-client-service";
+import type { MessageData, IEmailClientService } from "@/result/domain/contracts/email-client-service";
 
-import { Result } from "@/result/domain/result";
-import { UserId } from "@/result/domain/value-objects/user-id";
+import * as Sentry from "@sentry/node";
+
 import { MessageNotFoundError, UnauthorizedSenderError, MessageAlreadyProcessedError } from "@/result/domain/errors";
+import { ScraperQueueMessageBody } from "@/result/domain/contracts/queue-message";
+import { SentryLogger } from "@/shared/infrastructure/services/sentry-logger";
+import { Result } from "@/result/domain/result";
+
+const logger = new SentryLogger(Sentry.logger);
 
 export class ValidationWorker {
-  private intervalId: NodeJS.Timeout | string | number | undefined;
+  private keepRunning = false;
 
   constructor(
     private readonly validationQueueService: QueueService,
-    private readonly scraperQueueService: QueueService,
+    private readonly scraperQueueService: QueueService<ScraperQueueMessageBody>,
     private readonly resultRepository: ResultRepository,
     private readonly emailClientService: IEmailClientService,
     private readonly userRepository: UserRepository,
   ) {}
 
-  start() {
-    console.log("🔍 Validation worker started, polling for messages every 30 seconds.");
+  async start() {
+    console.log("🔍 Validation worker started");
 
-    const intervalId = setInterval(() => {
-      this.processMessages().catch((error: unknown) => {
-        console.error("Unhandled error in validation worker:", error);
-      });
-    }, 30000);
+    this.keepRunning = true;
 
-    this.intervalId = intervalId;
+    while (this.keepRunning) {
+      try {
+        await this.processMessages();
+      } catch (error) {
+        logger.error("Unhandled error in validation worker main loop:", { error });
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+      }
+    }
   }
 
   stop() {
-    clearInterval(this.intervalId);
+    this.keepRunning = false;
   }
 
   private async processMessages(): Promise<void> {
@@ -41,7 +50,7 @@ export class ValidationWorker {
       if (response.Messages?.length) {
         for (const message of response.Messages) {
           if (!message.Body) {
-            console.warn("Message without body received, skipping...");
+            logger.warn("Message without body received, skipping...", { queueMessageId: message.MessageId });
             continue;
           }
 
@@ -51,7 +60,7 @@ export class ValidationWorker {
           try {
             body = JSON.parse(message.Body) as { messageId: string };
           } catch (parseError) {
-            console.error("Error parsing message body:", parseError);
+            logger.warn("Error parsing message body:", { error: parseError, queueMessageId: message.MessageId });
             // Eliminar mensaje malformado
             if (message.ReceiptHandle) {
               await this.validationQueueService.deleteMessage(message.ReceiptHandle);
@@ -61,46 +70,51 @@ export class ValidationWorker {
 
           try {
             // Ejecutar lógica de validación
-            await this.validateAndQueueForScraping(body.messageId);
+            const emailMessage = await this.validateAndQueueForScraping(body.messageId);
 
             // Eliminar mensaje de la cola de validación
             if (message.ReceiptHandle) {
               await this.validationQueueService.deleteMessage(message.ReceiptHandle);
             }
 
-            console.log(`✅ Message ${body.messageId} validated and queued for scraping`);
+            logger.info(`✅ Message validated and queued for scraping`, {
+              messageId: emailMessage.id,
+              subject: emailMessage.subject,
+              sender: emailMessage.sender.emailAddress.address,
+              queueMessageId: message.MessageId,
+            });
           } catch (error) {
             if (error instanceof MessageAlreadyProcessedError) {
-              console.warn("Message already processed:", error.message);
+              logger.warn("Message already processed:", { message: error.message, messageId: body.messageId });
               // Eliminar mensaje duplicado
               if (message.ReceiptHandle) {
                 await this.validationQueueService.deleteMessage(message.ReceiptHandle);
               }
             } else if (error instanceof UnauthorizedSenderError) {
-              console.warn("Unauthorized sender:", error.message);
+              logger.warn("Unauthorized sender:", { message: error.message, sender: error.details?.sender });
               // Eliminar mensaje de sender no autorizado
               if (message.ReceiptHandle) {
                 await this.validationQueueService.deleteMessage(message.ReceiptHandle);
               }
             } else if (error instanceof MessageNotFoundError) {
-              console.error("Message not found:", error.message);
+              logger.error("Message not found:", { message: error.message, messageId: message.MessageId });
               // Eliminar referencia a mensaje inexistente
               if (message.ReceiptHandle) {
                 await this.validationQueueService.deleteMessage(message.ReceiptHandle);
               }
             } else {
-              console.error("Error processing validation message:", error);
+              logger.error("Error processing validation message:", { error, messageId: message.MessageId });
               // No eliminar - dejar que reintente (o vaya a DLQ después de max attempts)
             }
           }
         }
       }
     } catch (error) {
-      console.error("Error in validation worker:", error);
+      logger.error("Error in validation worker:", { error });
     }
   }
 
-  private async validateAndQueueForScraping(messageId: string): Promise<void> {
+  private async validateAndQueueForScraping(messageId: string): Promise<MessageData> {
     // 1. Verificar si ya fue procesado
     const existingResult = await this.resultRepository.findByMessageId(messageId);
     if (existingResult) {
@@ -121,9 +135,9 @@ export class ValidationWorker {
 
     // 4. Crear y guardar resultado en BD
     const newResult = Result.create({
-      emailClient: message.sender.emailAddress.address.includes("hotmail") ? "hotmail" : "gmail",
+      email: message.sender.emailAddress.address,
       messageId: message.id,
-      userId: new UserId(user.requireId().getValue()),
+      userId: user.requireId(),
     });
 
     await this.resultRepository.save(newResult);
@@ -133,6 +147,9 @@ export class ValidationWorker {
       messageId: message.id,
       sender: message.sender.emailAddress.address,
       subject: message.subject,
+      uid: user.requireId().getValue(),
     });
+
+    return message;
   }
 }
