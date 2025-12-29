@@ -1,26 +1,47 @@
-import { runScrapper } from "../services/scrapper-service";
+/* eslint-disable @typescript-eslint/no-unnecessary-condition */
 import { type QueueService } from "@/result/domain/contracts/queue-service";
 import { type ScraperQueueMessageBody } from "@/result/domain/contracts/queue-message";
 
+import { readFileSync } from "node:fs";
+import * as Sentry from "@sentry/node";
+import { randomUUID } from "node:crypto";
+import { runScrapper } from "../services/scrapper-service";
+import { createClient } from "@supabase/supabase-js";
+import { SentryLogger } from "@/shared/infrastructure/services/sentry-logger";
+import { NotFoundError } from "@/shared/domain/errors";
+import { UserRepository } from "@/user/domain/contracts/user-repository";
+import { ResultRepository } from "@/result/domain/contracts/result-repository";
+
+const supabase = createClient(process.env.SUPABASE_URL ?? "", process.env.SUPABASE_SERVICE_ROLE ?? "");
+
+const logger = new SentryLogger(Sentry.logger);
+
 export class ScrapperWorker {
-  private intervalId: NodeJS.Timeout | string | number | undefined;
+  private keepRunning = false;
 
-  constructor(private readonly scraperQueueService: QueueService) {}
+  constructor(
+    private readonly scraperQueueService: QueueService,
+    private readonly resultRepository: ResultRepository,
+    private readonly userRepository: UserRepository,
+  ) {}
 
-  start() {
-    console.log("🎨 Scraper worker started, polling for messages every 30 seconds.");
+  async start() {
+    console.log("🎨 Scraper worker started");
 
-    const intervalId = setInterval(() => {
-      this.processMessages().catch((error: unknown) => {
-        console.error("Unhandled error in scraper worker:", error);
-      });
-    }, 30000);
+    this.keepRunning = true;
 
-    this.intervalId = intervalId;
+    while (this.keepRunning) {
+      try {
+        await this.processMessages();
+      } catch (error) {
+        logger.error("Unhandled error in scraper worker main loop:", { error });
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+      }
+    }
   }
 
   stop() {
-    clearInterval(this.intervalId);
+    this.keepRunning = false;
   }
 
   private async processMessages(): Promise<void> {
@@ -30,7 +51,7 @@ export class ScrapperWorker {
       if (response.Messages?.length) {
         for (const message of response.Messages) {
           if (!message.Body) {
-            console.warn("Message without body received, skipping...");
+            logger.warn("Message without body received, skipping...", { queueMessageId: message.MessageId });
             continue;
           }
 
@@ -40,7 +61,7 @@ export class ScrapperWorker {
           try {
             body = JSON.parse(message.Body) as ScraperQueueMessageBody;
           } catch (parseError) {
-            console.error("Error parsing message body:", parseError);
+            logger.warn("Error parsing message body:", { error: parseError, queueMessageId: message.MessageId });
             // Eliminar mensaje malformado
             if (message.ReceiptHandle) {
               await this.scraperQueueService.deleteMessage(message.ReceiptHandle);
@@ -50,81 +71,70 @@ export class ScrapperWorker {
 
           try {
             // Ejecutar scraping con Playwright
-            await runScrapper(body);
+            // Debe devolver la ruta al archivo temporal generado para guardarlo en S3
+            const path = await runScrapper(body);
+
+            const uid = body.uid;
+            // Guardar el resultado en almacenamiento de objetos como S3
+            const publicUrl = await this.uploadScreenshot(path, uid);
+
+            // Guardar la imagen del resultado y metadatos en la base de datos
+            const result = await this.resultRepository.findByMessageId(body.messageId);
+
+            if (!result) throw new NotFoundError("Result", body.messageId);
+
+            result.update({ resultUrl: publicUrl });
+            await this.resultRepository.update(result);
 
             // Eliminar mensaje después de scraping exitoso
             if (message.ReceiptHandle) {
               await this.scraperQueueService.deleteMessage(message.ReceiptHandle);
             }
 
-            console.log(`✅ Scraping completed for message ${body.messageId}`);
+            logger.info(`✅ Scraping completed`, {
+              ...body,
+              queueMessageId: message.MessageId,
+            });
           } catch (error) {
-            console.error("Error processing scraper message:", error);
+            logger.error("Error processing scraper message:", { error, ...body });
+            Sentry.captureException(error, {
+              extra: {
+                ...body,
+                queueMessageId: message.MessageId,
+              },
+            });
             // No eliminar - dejar que reintente o vaya a DLQ
           }
         }
       }
     } catch (error) {
-      console.error("Error in scraper worker:", error);
+      logger.error("Error in scraper worker:", { error });
+      Sentry.captureException(error, {
+        extra: {
+          worker: "scraper-worker",
+        },
+      });
     }
   }
+
+  private async uploadScreenshot(screenshotPath: string, uid: string) {
+    const fileBuffer = readFileSync(screenshotPath);
+    const filename = `${uid}/${randomUUID()}.png`;
+
+    const { data, error } = await supabase.storage.from("results").upload(filename, fileBuffer, {
+      contentType: "image/png",
+      upsert: false,
+    });
+
+    if (error) {
+      console.log("Error subiendo archivo: ", error);
+      throw error;
+    }
+
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from("results").getPublicUrl(data.path);
+
+    return publicUrl;
+  }
 }
-
-// export function startScrapperWorker() {
-//   console.log("Scrapper worker started, polling for messages every 30 seconds.");
-//   const processMessages = async (): Promise<void> => {
-//     try {
-//       const response = await recieveMessageCommand();
-
-//       if (response.Messages?.length) {
-//         for (const message of response.Messages) {
-//           // Validar que el mensaje tenga body
-//           if (!message.Body) {
-//             console.warn("Message without body received, skipping...");
-//             continue;
-//           }
-
-//           let body: unknown;
-//           console.log("Processing message:", message);
-//           try {
-//             body = JSON.parse(message.Body) as unknown;
-//           } catch (parseError) {
-//             console.error("Error parsing message body:", parseError);
-//             // Eliminar mensaje malformado para evitar procesamiento infinito
-//             if (message.ReceiptHandle) {
-//               await deleteMessageCommand(message.ReceiptHandle);
-//             }
-//             continue;
-//           }
-
-//           try {
-//             await runScrapper(body);
-
-//             // Solo eliminar si tiene ReceiptHandle
-//             if (message.ReceiptHandle) {
-//               await deleteMessageCommand(message.ReceiptHandle);
-//             }
-//           } catch (error) {
-//             console.error("Error processing message:", error);
-//             // Considerar implementar dead letter queue o retry logic aquí
-//           }
-//         }
-//       }
-//     } catch (error) {
-//       console.error("Error in scrapper worker:", error);
-//     }
-//   };
-
-//   const intervalId = setInterval(() => {
-//     processMessages().catch((error: unknown) => {
-//       console.error("Unhandled error in message processing:", error);
-//     });
-//   }, 30000);
-
-//   // Retornar el ID del intervalo para poder detenerlo
-//   return intervalId;
-// }
-
-// export function stopScrapperWorker(intervalId: NodeJS.Timeout): void {
-//   clearInterval(intervalId);
-// }
