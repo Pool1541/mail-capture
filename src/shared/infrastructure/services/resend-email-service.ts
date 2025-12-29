@@ -19,8 +19,8 @@ export class ResendEmailService implements EmailService {
       });
 
       if (error) {
-        const errorResponse = error as unknown as { error: string; statusCode: number };
-        throw new EmailError(`Email sending failed: ${errorResponse.error}`);
+        const errorResponse = error as unknown as { name: string; message: string };
+        throw new EmailError(`Email sending failed: ${errorResponse.message}`);
       }
 
       console.log("Email sent successfully:");
