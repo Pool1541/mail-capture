@@ -34,7 +34,7 @@ export class ScrapeMessageIfNotExists {
       }
 
       const newResult = Result.create({
-        emailClient: message.sender.emailAddress.address.includes("hotmail") ? "hotmail" : "gmail",
+        email: message.sender.emailAddress.address,
         messageId: message.id,
         userId: new UserId(user.requireId().getValue()),
       });

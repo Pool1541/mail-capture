@@ -1,11 +1,11 @@
-import { EmailClient } from "@/result/domain/result";
+import { EmailClientType } from "@/result/domain/value-objects/email-client";
 
 export interface ResultResponseDTO {
   id: string;
   messageId: string;
   createdAt: Date;
   opened: boolean;
-  emailClient: EmailClient;
+  emailClient: EmailClientType;
   userId: string;
   resultUrl: string | null;
 }

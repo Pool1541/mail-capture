@@ -14,7 +14,7 @@ export class FindResultByMessageId {
       messageId: result.getMessageId(),
       createdAt: result.getCreatedAt().getValue(),
       opened: result.getOpened().getValue(),
-      emailClient: result.getEmailClient(),
+      emailClient: result.getEmailClient().getValue(),
       userId: result.getUserId().getValue(),
       resultUrl: result.requireResultUrl(),
     };
