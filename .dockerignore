@@ -1,9 +1,11 @@
 .vscode/
 .github/
 .husky/
-node_modules/
 coverage/
+dist/
 docs/
-prompts/
+node_modules/
+tmp/
+user-data/
 .env
 .env.*
