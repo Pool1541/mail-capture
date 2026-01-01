@@ -1,0 +1,54 @@
+version: "3.8"
+
+services:
+  api:
+    image: mail-capture-api:v1.0.0
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+      args:
+        NGROK_AUTH_TOKEN: ${NGROK_AUTH_TOKEN}
+    container_name: mail-capture-api
+    env_file:
+      - .env.development
+    ports:
+      - "${PORT:-8080}:${PORT:-8080}"
+    restart: unless-stopped
+    networks:
+      - mail-capture-network
+
+  validation-worker:
+    image: mail-capture-validation:v1.0.0
+    build:
+      context: .
+      dockerfile: Dockerfile.validation
+    container_name: mail-capture-validation-worker
+    env_file:
+      - .env.development
+    command: node dist/src/validation-worker-main.js
+    restart: unless-stopped
+    networks:
+      - mail-capture-network
+    depends_on:
+      - api
+
+  scraper-worker:
+    image: mail-capture-scraper:v1.0.0
+    build:
+      context: .
+      dockerfile: Dockerfile.scraper
+    container_name: mail-capture-scraper-worker
+    env_file:
+      - .env.development
+    command: node dist/src/scraper-worker-main.js
+    restart: unless-stopped
+    networks:
+      - mail-capture-network
+    depends_on:
+      - api
+    stdin_open: true
+    tty: true
+
+networks:
+  mail-capture-network:
+    driver: bridge
