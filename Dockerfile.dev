@@ -42,8 +42,14 @@ COPY tsconfig*.json ./
 # Instalar dependencias
 RUN npm install
 
+# Instalar navegadores de Playwright y sus dependencias del sistema
+RUN npx playwright install --with-deps chromium
+
 # Copiar el resto del código fuente
 COPY . .
+
+# Compilar el proyecto
+RUN npm run build
 
 # Crear script de inicio
 RUN echo '#!/bin/bash\n\
@@ -54,7 +60,7 @@ sleep 10\n\
 # Mostrar la URL pública\n\
 echo "Ngrok is starting... Check /app/ngrok.log for details"\n\
 # Iniciar la aplicación principal\n\
-exec npx tsx ./src/index.ts run start' > /app/start.sh \
+exec node dist/src/index.js' > /app/start.sh \
     && chmod +x /app/start.sh
 
 # Mantener el contenedor en ejecución para trabajo manual
