@@ -5,14 +5,16 @@
 /* eslint-disable @typescript-eslint/no-floating-promises */
 import { mkdir } from "node:fs/promises";
 import { resolve } from "path";
-import { chromium } from "playwright";
+import { chromium, Page } from "playwright";
 import * as readline from "readline";
 
+const WAIT_FOR_SELECTOR_IN_MS = 5000;
+const WAIT_FOR_ACTION_IN_MS = 3000;
 const EMAIL = process.env.SCRAPER_EMAIL ?? "";
 const PASSWORD = process.env.SCRAPER_PASSWORD ?? "";
 
 export default async function run({ subject, sender }: { subject: string; sender: string }) {
-  const browser = await chromium.launchPersistentContext("./user-data", { headless: true, locale: "es-ES" });
+  const browser = await chromium.launchPersistentContext("./user-data", { headless: false, locale: "es-ES" });
 
   const mainPage = await browser.newPage();
   await mainPage.setViewportSize({ width: 1440, height: 800 });
@@ -33,89 +35,10 @@ export default async function run({ subject, sender }: { subject: string; sender
     timeout: 120000,
   });
 
-  console.log("Estás en la página de login!");
+  console.log("Verificando estado de sesión...");
 
   // Detectar si hay una sesión abierta o es la vista de login
-  let stillInLoginPage = true;
-  await mainPage
-    .waitForSelector(`:has-text("${EMAIL}")`, { timeout: 5000 })
-    .then(async () => {
-      console.log("La sesión está abierta, ingresando");
-
-      while (stillInLoginPage) {
-        try {
-          await mainPage.waitForSelector(`[data-test-id="${EMAIL}"]`, { timeout: 1000 });
-          console.log("Se encontró el email en la lista, haciendo click para ingresar...");
-          await mainPage.locator(`[data-test-id="${EMAIL}"]`).click();
-          // [TODO] Puede que después de hacer click en el email, aún pida contraseña y 2FA
-          console.log("Haciendo click en el mail:", EMAIL);
-          stillInLoginPage = false;
-        } catch (error) {
-          console.log(error);
-          stillInLoginPage = false;
-        }
-      }
-
-      console.log('"✅ Sesión iniciada correctamente."');
-    })
-    .catch(async () => {
-      console.log("No hay sesión abierta, iniciando sesión...");
-
-      // toma un screenshot de la página de login para depuración
-      await mainPage.screenshot({ path: "login_page.png", fullPage: true });
-      await mainPage.waitForSelector('input[type="email"]', { timeout: 30000 });
-      await mainPage.fill('input[type="email"]', EMAIL);
-      await mainPage.locator('input[type="submit"][value="Siguiente"]').click({ timeout: 1000 });
-
-      await mainPage.waitForSelector('input[type="password"][name="passwd"][placeholder="Contraseña"]', { timeout: 30000 });
-      await mainPage.fill('input[type="password"][name="passwd"][placeholder="Contraseña"]', PASSWORD);
-      await mainPage.locator('input[type="submit"][value="Iniciar sesión"]').click();
-
-      console.log("Esperando a que el usuario complete el flujo de 2FA...");
-
-      // Esperar a que aparezca el campo de código 2FA
-      await mainPage.waitForSelector('input[name="otc"]', { timeout: 5000 });
-
-      // Pedir el código al usuario por consola
-      const rl = readline.createInterface({
-        input: process.stdin,
-        output: process.stdout,
-      });
-
-      const code: unknown = await new Promise((resolve) => {
-        rl.question("Ingresa el código 2FA: ", (answer) => {
-          rl.close();
-          resolve(answer);
-        });
-      });
-
-      // Volver atrás y seleccionar la cuenta nuevamente
-      await mainPage.goBack();
-      await mainPage.waitForSelector(`:has-text("${EMAIL}")`, { timeout: 30000 });
-      await mainPage.locator(`[data-test-id="${EMAIL}"]`).click();
-
-      // Esperar a que cargue la página de ingreso del código 2FA
-      await mainPage.waitForURL(
-        (url) => url.href.includes("login.microsoftonline.com/common/login") || url.href.includes("login.microsoftonline.com/common/reprocess"),
-        {
-          timeout: 3000,
-        },
-      );
-
-      // Ingresar el código automáticamente
-      await mainPage.fill('input[name="otc"]', code as string);
-      await mainPage.locator('input[type="submit"][value="Comprobar"]').click();
-
-      // Aquí seleccionamos que queremos mantener la sesión abierta
-      await mainPage.waitForURL((url) => url.href.includes("login.microsoftonline.com/common/SAS/ProcessAuth"), {
-        timeout: 0, // Espera indefinidamente hasta que el usuario complete el flujo
-      });
-
-      await mainPage.waitForSelector('input[type="submit"][data-report-event="Signin_Submit"][value="Sí"]', { timeout: 30000 });
-      await mainPage.locator('input[type="submit"][data-report-event="Signin_Submit"][value="Sí"]').click();
-
-      console.log('"✅ Sesión iniciada correctamente."');
-    });
+  await signIn(mainPage);
 
   // Esperar a que la página rediriga al inbox o nuevamente a la página de login
   // await inboxPage.waitForSelector(`:has-text("${EMAIL}")`, { timeout: 30000 });
@@ -141,7 +64,7 @@ export default async function run({ subject, sender }: { subject: string; sender
   // Selector del email con el asunto específico
   const emailSelector = `div[aria-label*="${subjectToFind}"]`;
   // Hacer click en el elemento del email
-  await mainPage.waitForSelector(emailSelector, { timeout: 30000 });
+  await mainPage.waitForSelector(emailSelector, { timeout: 0 });
 
   // Solo hacer click en el primer resultado que coincida
   await mainPage.locator(emailSelector).first().click();
@@ -180,6 +103,126 @@ export default async function run({ subject, sender }: { subject: string; sender
   return screenshotPath;
 }
 
+async function requestTwoFactorCode() {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  const code: string = await new Promise((resolve) => {
+    rl.question("Ingresa el código 2FA: ", (answer) => {
+      rl.close();
+      resolve(answer);
+    });
+  });
+
+  return code;
+}
+
+async function signIn(page: Page) {
+  let isSignedIn = false;
+  while (!isSignedIn) {
+    await signInSteps(page);
+    // Esperar un momento para que la página procese el paso
+    await page.waitForTimeout(2000);
+
+    const url = new URL(page.url());
+    const path = url.pathname;
+
+    if (path.includes("/mail/0")) {
+      isSignedIn = true;
+      console.log("✅ Inicio de sesión completado.");
+    }
+  }
+}
+
+/**
+ * Esta función tiene un switch de pasos para manejar diferentes partes del flujo de autenticación.
+ * Esta función se llama repetidamente hasta que se completa el proceso de inicio de sesión.
+ * @param page La página de Playwright donde se realiza el inicio de sesión.
+ * @return void
+ * @example
+ * await signInSteps(page); // Llama a la función para manejar los pasos de inicio de sesión
+ */
+async function signInSteps(page: Page) {
+  const errorBlock = page.locator('div[id="debugDetailsBanner"]');
+  if (await errorBlock.isVisible({ timeout: WAIT_FOR_SELECTOR_IN_MS })) {
+    console.log("❌ Error en el inicio de sesión. Reiniciando el proceso...");
+    await goToHomePage(page);
+    return;
+  }
+
+  const loginButton = page.locator('a[id="c-shellmenu_custom_outline_signin_bhvr100_right"]:has-text("Iniciar sesión")');
+  if (await loginButton.isVisible({ timeout: WAIT_FOR_SELECTOR_IN_MS })) {
+    console.log("Abriendo página de inicio de sesión");
+    await loginButton.click({ timeout: WAIT_FOR_ACTION_IN_MS });
+    return;
+  }
+
+  const accountSelector = page.getByText("Selección de la cuenta");
+  if (await accountSelector.isVisible({ timeout: WAIT_FOR_SELECTOR_IN_MS })) {
+    console.log("Cuenta guardada");
+    const emailAccountButton = page.locator(`[data-test-id="${EMAIL}"]`);
+    await emailAccountButton.click({ timeout: WAIT_FOR_ACTION_IN_MS });
+    return;
+  }
+
+  const emailStep = page.locator('input[type="email"]');
+  if (await emailStep.isVisible({ timeout: WAIT_FOR_SELECTOR_IN_MS })) {
+    console.log("Email");
+    await emailStep.fill(EMAIL);
+    const nextButton = page.locator('input[type="submit"][value="Siguiente"]');
+    await nextButton.click({ timeout: WAIT_FOR_ACTION_IN_MS });
+    return;
+  }
+
+  const passwordStep = page.locator('input[type="password"][name="passwd"][placeholder="Contraseña"]');
+  if (await passwordStep.isVisible({ timeout: WAIT_FOR_SELECTOR_IN_MS })) {
+    console.log("Contraseña");
+    await passwordStep.fill(PASSWORD);
+    const signInButton = page.locator('input[type="submit"][value="Iniciar sesión"]');
+    await signInButton.click({ timeout: WAIT_FOR_ACTION_IN_MS });
+    return;
+  }
+
+  const otpAlertTimeout = page.locator('div[class*="alert-error"]');
+  if (await otpAlertTimeout.isVisible({ timeout: WAIT_FOR_SELECTOR_IN_MS })) {
+    console.log("Código 2FA incorrecto o expirado. Intentar de nuevo.");
+    await goToHomePage(page);
+    return;
+  }
+
+  const otcStep = page.locator('input[name="otc"]');
+  if (await otcStep.isVisible({ timeout: WAIT_FOR_SELECTOR_IN_MS })) {
+    console.log("OTP");
+    const initCount = Date.now();
+    const code = await requestTwoFactorCode();
+    const finishCount = Date.now();
+    const elapsedSeconds = (finishCount - initCount) / 1000;
+    if (elapsedSeconds > 120) {
+      console.log("El código 2FA ha expirado. Intentar de nuevo.");
+      await goToHomePage(page);
+      return;
+    }
+    await otcStep.fill(code, { timeout: WAIT_FOR_ACTION_IN_MS });
+    const verifyButton = page.locator('input[type="submit"][value="Comprobar"]');
+    await verifyButton.click({ timeout: WAIT_FOR_ACTION_IN_MS });
+    return;
+  }
+
+  const staySignedInStep = page.locator('input[type="submit"][data-report-event="Signin_Submit"][value="Sí"]');
+  if (await staySignedInStep.isVisible({ timeout: WAIT_FOR_SELECTOR_IN_MS })) {
+    console.log("Mantener sesión iniciada");
+    await staySignedInStep.click({ timeout: WAIT_FOR_ACTION_IN_MS });
+    return;
+  }
+}
+
+async function goToHomePage(page: Page) {
+  console.log("Navegando a la página principal...");
+  await page.goto("https://outlook.live.com/mail/", { waitUntil: "domcontentloaded" });
+}
+
 // if (process.argv[1] === import.meta.filename) {
 //   run({}).catch((err: unknown) => {
 //     console.error("❌ Error:", err);
@@ -187,7 +230,7 @@ export default async function run({ subject, sender }: { subject: string; sender
 //   });
 // }
 
-// run({ sender: "TEST MAIL CASHBACK", subject: "novedades@scotiabank.com.pe" }).catch((err: unknown) => {
+// run({ sender: "novedades@scotiabank.com.pe", subject: "TEST MAIL CASHBACK" }).catch((err: unknown) => {
 //   console.error("❌ Error:", err);
 //   process.exit(1);
 // });
