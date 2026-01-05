@@ -1,7 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-floating-promises */
 import { mkdir } from "node:fs/promises";
 import { resolve } from "path";
@@ -85,6 +81,15 @@ export default async function run({ subject, sender }: { subject: string; sender
   const contentPage = await browser.newPage();
   await contentPage.setViewportSize({ width: 768, height: 1024 });
   await contentPage.setContent(emailContent);
+
+  // Limpiar el texto marcado (resaltado) en amarillo por Outlook
+  await contentPage.locator('[data-markjs="true"]').evaluateAll((elements) => {
+    elements.forEach((el) => {
+      el.style.backgroundColor = "";
+      el.style.color = "";
+    });
+  });
+
   await contentPage.addStyleTag({ content: `body { margin: 0; } ::-webkit-scrollbar { display: none; }` });
 
   // Esperar a que el contenido se renderice completamente con un pequeño retraso
