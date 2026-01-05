@@ -14,7 +14,7 @@ const EMAIL = process.env.SCRAPER_EMAIL ?? "";
 const PASSWORD = process.env.SCRAPER_PASSWORD ?? "";
 
 export default async function run({ subject, sender }: { subject: string; sender: string }) {
-  const browser = await chromium.launchPersistentContext("./user-data", { headless: false, locale: "es-ES" });
+  const browser = await chromium.launchPersistentContext("./user-data", { headless: true, locale: "es-ES" });
 
   const mainPage = await browser.newPage();
   await mainPage.setViewportSize({ width: 1440, height: 800 });
