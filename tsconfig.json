@@ -3,6 +3,7 @@
   "compilerOptions": {
     "outDir": "./dist",
     "baseUrl": ".",
+    "lib": ["DOM"],
 
     // "esModuleInterop": true,
     // "allowSyntheticDefaultImports": true
