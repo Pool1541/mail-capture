@@ -1,6 +1,7 @@
 services:
   traefik:
     image: traefik:v3.6
+    container_name: traefik
     command:
       - "--api.insecure=false"
       - "--providers.docker=true"
