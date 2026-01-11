@@ -15,12 +15,18 @@ RUN npm run sentry:sourcemaps
 
 FROM node:24-slim
 
+# Configurar zona horaria GMT-5
+ENV TZ=America/Lima
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
 # Instalar dependencias
 RUN apt-get update && apt-get install -y \
     git \
     wget \
     apt-transport-https \
     software-properties-common \
+    cron \
+    tzdata \
     && rm -rf /var/lib/apt/lists/*
 
 # Instalar PowerShell 7
@@ -38,7 +44,15 @@ WORKDIR /app
 
 COPY --from=builder /app/node_modules /app/node_modules
 COPY --from=builder /app/scripts /app/scripts
+COPY --from=builder /app/infra /app/infra
 COPY --from=builder /app/dist /app/dist
 
-# Mantener el contenedor en ejecución para trabajo manual
-CMD ["node", "./dist/index.js"]
+# Crear directorio para logs de cron
+RUN mkdir -p /var/log/cron
+
+# Copiar archivo de crontab
+COPY infra/cron/crontab /etc/cron.d/app-cron
+RUN chmod 0644 /etc/cron.d/app-cron && crontab /etc/cron.d/app-cron
+
+# Iniciar cron y la aplicación
+CMD ["/bin/sh", "-c", "cron && node ./dist/index.js"]
