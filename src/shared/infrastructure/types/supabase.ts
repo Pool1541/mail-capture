@@ -4,10 +4,10 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "12.2.12 (cd3cf9e)";
+    PostgrestVersion: "13.0.5";
   };
   public: {
     Tables: {
@@ -76,6 +76,39 @@ export type Database = {
           name?: string | null;
           updated_at?: string;
           user_name?: string | null;
+        };
+        Relationships: [];
+      };
+      webhooks: {
+        Row: {
+          active: boolean;
+          change_type: string;
+          client: Database["public"]["Enums"]["email_clients"];
+          created_at: string;
+          expiration_time: string;
+          id: string;
+          notification_url: string;
+          resource: string;
+        };
+        Insert: {
+          active: boolean;
+          change_type: string;
+          client: Database["public"]["Enums"]["email_clients"];
+          created_at?: string;
+          expiration_time: string;
+          id: string;
+          notification_url: string;
+          resource: string;
+        };
+        Update: {
+          active?: boolean;
+          change_type?: string;
+          client?: Database["public"]["Enums"]["email_clients"];
+          created_at?: string;
+          expiration_time?: string;
+          id?: string;
+          notification_url?: string;
+          resource?: string;
         };
         Relationships: [];
       };
