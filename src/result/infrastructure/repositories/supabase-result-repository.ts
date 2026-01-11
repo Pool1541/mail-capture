@@ -10,7 +10,7 @@ import { ResultId } from "../../domain/value-objects/result-id";
 import { ResultOpened } from "../../domain/value-objects/result-opened";
 import { ResultCreatedAt } from "../../domain/value-objects/created-at";
 import { RepositoryError } from "@/shared/domain/errors/common-errors";
-import { EmailClient } from "@/result/domain/value-objects/email-client";
+import { ResultEmailClient } from "@/result/domain/value-objects/email-client";
 
 export class SupabaseResultRepository implements ResultRepository {
   private supabase: SupabaseClient<Database>;
@@ -129,7 +129,7 @@ export class SupabaseResultRepository implements ResultRepository {
     return new Result({
       id: new ResultId(data.id),
       createdAt: new ResultCreatedAt(new Date(data.created_at)),
-      emailClient: new EmailClient(data.email_client),
+      emailClient: new ResultEmailClient(data.email_client),
       messageId: data.message_id,
       openend: new ResultOpened(data.opened),
       resultUrl: data.result_url ?? undefined,

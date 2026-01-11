@@ -5,13 +5,13 @@ import { ResultId } from "./value-objects/result-id";
 import { ResultError } from "./errors/result-error";
 import { ResultOpened } from "./value-objects/result-opened";
 import { ResultCreatedAt } from "./value-objects/created-at";
-import { EmailClient } from "./value-objects/email-client";
+import { ResultEmailClient } from "./value-objects/email-client";
 
 export class Result {
   id: ResultId | null;
   createdAt: ResultCreatedAt;
   openend: ResultOpened;
-  emailClient: EmailClient;
+  emailClient: ResultEmailClient;
   userId: UserId;
   resultUrl: string | null;
   messageId: string;
@@ -28,7 +28,7 @@ export class Result {
     id?: ResultId;
     createdAt: ResultCreatedAt;
     openend: ResultOpened;
-    emailClient: EmailClient;
+    emailClient: ResultEmailClient;
     userId: UserId;
     resultUrl?: string;
     messageId: string;
@@ -64,7 +64,7 @@ export class Result {
     return this.openend;
   }
 
-  getEmailClient(): EmailClient {
+  getEmailClient(): ResultEmailClient {
     return this.emailClient;
   }
 
@@ -118,7 +118,7 @@ export class Result {
     return new Result({
       createdAt: new ResultCreatedAt(new Date()),
       openend: new ResultOpened(false),
-      emailClient: EmailClient.fromEmail(email),
+      emailClient: ResultEmailClient.fromEmail(email),
       userId,
       messageId,
     });
