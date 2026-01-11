@@ -1,0 +1,2 @@
+# Renovar webhook subscription todos los días a las 00:00
+0 0 * * * cd /app && /usr/local/bin/node ./dist/src/webhook/adapters/cli/renew-webhook.js >> /var/log/cron/renew-webhook.log 2>&1
