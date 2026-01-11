@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-floating-promises */
 import { mkdir } from "node:fs/promises";
 import { resolve } from "path";
 import { chromium, Page } from "playwright";
@@ -24,7 +23,7 @@ export default async function run({ subject, sender }: { subject: string; sender
   // const [inboxPage] = await Promise.all([browser.waitForEvent("page"), mainPage.locator(loginButtonSelector).click()]);
 
   // await inboxPage.bringToFront();
-  mainPage.locator(loginButtonSelector).click();
+  await mainPage.locator(loginButtonSelector).click();
   console.log("🧭 Esperando a que se cargue Outlook en la nueva pestaña...");
 
   await mainPage.waitForURL((url) => url.href.includes("outlook.live.com/mail") || url.href.includes("login.microsoftonline.com/common"), {
