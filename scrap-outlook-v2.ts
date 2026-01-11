@@ -141,12 +141,14 @@ async function signIn(page: Page) {
 }
 
 /**
- * Esta función tiene un switch de pasos para manejar diferentes partes del flujo de autenticación.
- * Esta función se llama repetidamente hasta que se completa el proceso de inicio de sesión.
- * @param page La página de Playwright donde se realiza el inicio de sesión.
- * @return void
- * @example
- * await signInSteps(page); // Llama a la función para manejar los pasos de inicio de sesión
+ * Handles the step-by-step sign-in process for Outlook by checking the current page state
+ * and performing appropriate actions such as clicking buttons, filling forms, or handling errors.
+ * If an error occurs (e.g., login failure, expired 2FA code), it restarts the process by navigating
+ * back to the home page. Supports account selection, email/password input, 2FA verification,
+ * and staying signed in.
+ *
+ * @param page - The Playwright Page instance representing the browser page.
+ * @returns A Promise that resolves when the sign-in step is completed or the process is restarted.
  */
 async function signInSteps(page: Page) {
   const errorBlock = page.locator('div[id="debugDetailsBanner"]');
