@@ -2,10 +2,10 @@ version: "3.8"
 
 services:
   api:
-    image: mail-capture-api:v1.0.0
+    image: mail-capture-api-dev
     build:
       context: .
-      dockerfile: Dockerfile.api
+      dockerfile: Dockerfile.dev
       args:
         NGROK_AUTH_TOKEN: ${NGROK_AUTH_TOKEN}
     container_name: mail-capture-api
@@ -18,10 +18,12 @@ services:
       - mail-capture-network
 
   validation-worker:
-    image: mail-capture-validation:v1.0.0
+    image: mail-capture-validation-dev
     build:
       context: .
-      dockerfile: Dockerfile.validation
+      dockerfile: Dockerfile.dev
+      args:
+        NGROK_AUTH_TOKEN: ${NGROK_AUTH_TOKEN}
     container_name: mail-capture-validation-worker
     env_file:
       - .env.development
@@ -33,10 +35,12 @@ services:
       - api
 
   scraper-worker:
-    image: mail-capture-scraper:v1.0.0
+    image: mail-capture-scraper-dev
     build:
       context: .
-      dockerfile: Dockerfile.scraper
+      dockerfile: Dockerfile.dev
+      args:
+        NGROK_AUTH_TOKEN: ${NGROK_AUTH_TOKEN}
     container_name: mail-capture-scraper-worker
     env_file:
       - .env.development
