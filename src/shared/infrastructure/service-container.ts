@@ -17,7 +17,11 @@ import { ValidateAccessToken } from "@/auth/application/use-cases/validate-acces
 import { RegisterInWhitelist } from "@/auth/application/use-cases/register-in-whitelist";
 import { SupabaseUserRepository } from "@/user/infrastructure/repositories/supabase-user-repository";
 import { ExpressResultController } from "@/result/infrastructure/express-result-controller";
+import { SupabaseWebhookRepository } from "@/webhook/infrastructure/repositories/supabase-webhook-repository";
 import { CreateEmailClientWebhookSubscription } from "@/result/application/use-cases/create-email-client-webhook-subscription";
+import { CreateWebhook } from "@/webhook/application/use-cases/create-webhook";
+import { RenewWebhook } from "@/webhook/application/use-cases/renew-webhook";
+import { WebhookRenewalService } from "@/webhook/application/services/webhook-renewal-service";
 
 const sqsClient = new SQSClient({
   region: process.env.AWS_REGION ?? "us-east-1",
@@ -36,6 +40,7 @@ const jwtService = new JwtService(process.env.SUPABASE_JWT_SECRET ?? "");
 
 const supabase = createClient<Database>(process.env.SUPABASE_URL ?? "", process.env.SUPABASE_SERVICE_ROLE ?? "");
 const userRepository = new SupabaseUserRepository(supabase);
+const webhookRepository = new SupabaseWebhookRepository(supabase);
 const resend = new Resend(process.env.RESEND_API_KEY ?? "");
 const emailService = new ResendEmailService(resend);
 const registerInWhitelist = new RegisterInWhitelist(userRepository);
@@ -49,8 +54,15 @@ const validateAccessToken = new ValidateAccessToken(jwtService);
 const signUpWebhook = new SignUpWebhook(sendWelcomeEmail, registerInWhitelist);
 
 // Result use-cases
-const createEmailClientWebhookSubscription = new CreateEmailClientWebhookSubscription(outlookService);
 const createAccessToken = new CreateAccessToken(outlookService);
+const createEmailClientWebhookSubscription = new CreateEmailClientWebhookSubscription(outlookService);
+
+// Webhook use-cases
+const createWebhook = new CreateWebhook(outlookService, webhookRepository);
+const renewWebhook = new RenewWebhook(outlookService, webhookRepository);
+
+// Webhook services
+const webhookRenewalService = new WebhookRenewalService(webhookRepository, renewWebhook, createWebhook);
 
 // Controllers
 const resultController = new ExpressResultController(logger, createAccessToken, validationQueueService, createEmailClientWebhookSubscription);
@@ -67,6 +79,9 @@ export const ServiceContainer = {
     createEmailClientWebhookSubscription,
     createAccessToken,
     validationQueueService,
+  },
+  webhook: {
+    webhookRenewalService,
   },
   monitoring: {
     logger,
