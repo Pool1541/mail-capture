@@ -30,12 +30,12 @@ export class CreateEmailClientWebhookSubscription {
       const response = await fetch(this.endpoint, requetInit);
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = (await response.json()) as unknown;
         console.log("MS webook error:", errorData);
         throw new Error(`Error creating webhook subscription: ${response.status.toString()} - ${response.statusText}`);
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as unknown;
       return data;
     } catch (error) {
       if (error instanceof Error) {
