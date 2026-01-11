@@ -1,7 +1,11 @@
 # Usar imagen oficial de Node.js basada en Debian (versión más actual)
-FROM node:22-bullseye
+FROM node:24-bullseye
 
 ARG NGROK_AUTH_TOKEN
+
+# Configurar zona horaria GMT-5
+ENV TZ=America/Lima
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 # Instalar dependencias adicionales y PowerShell 7
 RUN apt-get update && apt-get install -y \
@@ -9,6 +13,8 @@ RUN apt-get update && apt-get install -y \
     wget \
     apt-transport-https \
     software-properties-common \
+    cron \
+    tzdata \
     && rm -rf /var/lib/apt/lists/*
 
 # Instalar PowerShell 7
@@ -51,8 +57,17 @@ COPY . .
 # Compilar el proyecto
 RUN npm run build
 
+# Crear directorio para logs de cron
+RUN mkdir -p /var/log/cron
+
+# Copiar archivo de crontab
+COPY infra/cron/crontab /etc/cron.d/app-cron
+RUN chmod 0644 /etc/cron.d/app-cron && crontab /etc/cron.d/app-cron
+
 # Crear script de inicio
 RUN echo '#!/bin/bash\n\
+# Iniciar cron\n\
+cron\n\
 # Iniciar ngrok en segundo plano\n\
 nohup ngrok http 8080 --log=stdout --log-level=info > /app/ngrok.log 2>&1 &\n\
 # Esperar un momento para que ngrok se inicie\n\
