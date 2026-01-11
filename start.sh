@@ -6,7 +6,7 @@ set +a
 docker network create traefik 2> /dev/null || true
 
 echo "Construyendo imágenes de producción..."
-docker compose -f infra/docker/prod/docker-compose.yml build
+docker compose --project-directory . -f infra/docker/prod/docker-compose.yml build
 
 if [ $? -ne 0 ]; then
   echo "Error: El build falló"
@@ -15,7 +15,7 @@ fi
 echo "Build completado exitosamente!"
 
 echo "Iniciando Traefik..."
-docker compose -f infra/docker/prod/traefik.yml up -d
+docker compose --project-directory . -f infra/docker/prod/traefik.yml up -d
 
 echo "Esperando a que Traefik esté listo..."
 until [ "$(docker inspect traefik --format='{{.State.Health.Status}}' 2>/dev/null)" == "healthy" ]; do
@@ -24,4 +24,4 @@ until [ "$(docker inspect traefik --format='{{.State.Health.Status}}' 2>/dev/nul
 done
 echo "Traefik está listo!"
 
-docker compose -f infra/docker/prod/docker-compose.yml up -d
+docker compose --project-directory . -f infra/docker/prod/docker-compose.yml up -d
