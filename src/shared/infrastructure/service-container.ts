@@ -7,6 +7,9 @@ import { type Database } from "./types/supabase";
 
 import { JwtService } from "@/auth/infrastructure/services/jwt-service";
 import { SentryLogger } from "./services/sentry-logger";
+import { RenewWebhook } from "@/webhook/application/use-cases/renew-webhook";
+import { CreateWebhook } from "@/webhook/application/use-cases/create-webhook";
+import { DeleteWebhook } from "@/webhook/application/use-cases/delete-webhook";
 import { SignUpWebhook } from "@/auth/application/use-cases/sign-up-webhook";
 import { OutlookService } from "@/result/infrastructure/services/outlook-service";
 import { SqsQueueService } from "@/result/infrastructure/services/sqs-queue-service";
@@ -15,13 +18,11 @@ import { CreateAccessToken } from "@/result/application/use-cases/create-access-
 import { ResendEmailService } from "./services/resend-email-service";
 import { ValidateAccessToken } from "@/auth/application/use-cases/validate-access-token";
 import { RegisterInWhitelist } from "@/auth/application/use-cases/register-in-whitelist";
+import { WebhookRenewalService } from "@/webhook/application/services/webhook-renewal-service";
 import { SupabaseUserRepository } from "@/user/infrastructure/repositories/supabase-user-repository";
 import { ExpressResultController } from "@/result/infrastructure/express-result-controller";
 import { SupabaseWebhookRepository } from "@/webhook/infrastructure/repositories/supabase-webhook-repository";
 import { CreateEmailClientWebhookSubscription } from "@/result/application/use-cases/create-email-client-webhook-subscription";
-import { CreateWebhook } from "@/webhook/application/use-cases/create-webhook";
-import { RenewWebhook } from "@/webhook/application/use-cases/renew-webhook";
-import { WebhookRenewalService } from "@/webhook/application/services/webhook-renewal-service";
 
 const sqsClient = new SQSClient({
   region: process.env.AWS_REGION ?? "us-east-1",
@@ -60,9 +61,10 @@ const createEmailClientWebhookSubscription = new CreateEmailClientWebhookSubscri
 // Webhook use-cases
 const createWebhook = new CreateWebhook(outlookService, webhookRepository);
 const renewWebhook = new RenewWebhook(outlookService, webhookRepository);
+const deleteWebhook = new DeleteWebhook(outlookService, webhookRepository);
 
 // Webhook services
-const webhookRenewalService = new WebhookRenewalService(webhookRepository, renewWebhook, createWebhook);
+const webhookRenewalService = new WebhookRenewalService(webhookRepository, renewWebhook, createWebhook, deleteWebhook);
 
 // Controllers
 const resultController = new ExpressResultController(logger, createAccessToken, validationQueueService, createEmailClientWebhookSubscription);
