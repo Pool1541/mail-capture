@@ -58,6 +58,25 @@ export class SupabaseWebhookRepository implements WebhookRepository {
     }
   }
 
+  async delete(webhookId: string): Promise<void> {
+    try {
+      const { error } = await this.supabase
+        .from("webhooks")
+        .update({
+          active: false,
+          change_type: "deleted",
+        })
+        .eq("id", webhookId);
+
+      if (error) {
+        throw new RepositoryError("WEBHOOK", `Failed to delete webhook: ${error.message}`, error);
+      }
+    } catch (error) {
+      if (error instanceof RepositoryError) throw error;
+      throw new RepositoryError("WEBHOOK", "Unexpected error deleting webhook", error);
+    }
+  }
+
   private mapToDomain(data: SupabaseWebhookEntity): Webhook {
     return new Webhook({
       id: data.id,
