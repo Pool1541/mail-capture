@@ -1,7 +1,7 @@
-import { mkdir } from "node:fs/promises";
-import { resolve } from "path";
-import { chromium, Page } from "playwright";
 import * as readline from "readline";
+import { resolve } from "path";
+import { mkdir } from "node:fs/promises";
+import { chromium, Page } from "playwright";
 
 const WAIT_FOR_SELECTOR_IN_MS = 5000;
 const WAIT_FOR_ACTION_IN_MS = 3000;
