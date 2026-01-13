@@ -35,10 +35,6 @@ export default async function run({ subject, sender }: { subject: string; sender
   // Detectar si hay una sesión abierta o es la vista de login
   await signIn(mainPage);
 
-  // Esperar a que la página rediriga al inbox o nuevamente a la página de login
-  // await inboxPage.waitForSelector(`:has-text("${EMAIL}")`, { timeout: 30000 });
-  // await inboxPage.locator(`[data-test-id="${EMAIL}"]`).click();
-
   await mainPage.waitForSelector('[data-app-section="MessageList"]', { timeout: 30000 });
   console.log("📨 Bandeja de entrada cargada correctamente.");
 
