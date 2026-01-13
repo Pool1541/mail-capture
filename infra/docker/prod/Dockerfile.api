@@ -11,7 +11,6 @@ RUN npm ci
 
 # Compilar el proyecto
 RUN npm run build
-RUN npm run sentry:sourcemaps
 
 FROM node:24-slim
 
