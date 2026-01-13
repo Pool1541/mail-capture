@@ -1,27 +1,12 @@
-# Usar imagen oficial de Node.js basada en Debian (versión más actual)
-FROM node:24-bullseye AS builder
-
-# Crear directorio de trabajo
-WORKDIR /app
-
-COPY package*.json ./
-
-# Instalar dependencias
-RUN npm ci
-
-# Copiar todos los archivos al contenedor
-COPY . .
-
-# Compilar el proyecto
-RUN npm run build
-
 FROM node:24-slim
 
-# Configurar zona horaria GMT-5
+WORKDIR /app
+
+# Configurar zona horaria (se cachea)
 ENV TZ=America/Lima
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-# Instalar dependencias
+# Instalar dependencias del sistema (se cachea)
 RUN apt-get update && apt-get install -y \
     git \
     wget \
@@ -31,30 +16,33 @@ RUN apt-get update && apt-get install -y \
     tzdata \
     && rm -rf /var/lib/apt/lists/*
 
-# Instalar PowerShell 7
-RUN wget -q https://packages.microsoft.com/config/debian/11/packages-microsoft-prod.deb \
+# Instalar PowerShell 7 (se cachea)
+RUN wget -q https://packages.microsoft.com/config/debian/12/packages-microsoft-prod.deb \
     && dpkg -i packages-microsoft-prod.deb \
     && rm packages-microsoft-prod.deb \
     && apt-get update \
     && apt-get install -y powershell \
     && rm -rf /var/lib/apt/lists/*
 
-# Instalar módulo de Exchange Online
+# Instalar módulo de Exchange Online (se cachea)
 RUN pwsh -Command "Install-Module -Name ExchangeOnlineManagement -Force -AllowClobber"
 
-WORKDIR /app
-
-COPY --from=builder /app/node_modules /app/node_modules
-COPY --from=builder /app/scripts /app/scripts
-COPY --from=builder /app/infra /app/infra
-COPY --from=builder /app/dist /app/dist
-
-# Crear directorio para logs de cron
+# Crear directorio para logs (se cachea)
 RUN mkdir -p /var/log/cron
 
-# Copiar archivo de crontab
+# Copiar y configurar crontab (solo si cambia el archivo)
 COPY infra/cron/crontab /etc/cron.d/app-cron
 RUN chmod 0644 /etc/cron.d/app-cron && crontab /etc/cron.d/app-cron
+
+# Copiar package files (se cachea si no cambian dependencias)
+COPY package*.json ./
+
+# Instalar dependencias Node (se cachea si no cambia package-lock.json)
+RUN npm ci
+
+# Copiar código y build (solo se ejecuta si cambia el código)
+COPY . .
+RUN npm run build
 
 # Iniciar cron y la aplicación
 CMD ["/bin/sh", "-c", "cron && node ./dist/index.js"]
