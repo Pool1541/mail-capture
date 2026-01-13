@@ -16,7 +16,6 @@ export default async function run({ subject, sender }: { subject: string; sender
   console.log("🌐 Abriendo outlook.live.com...");
   await mainPage.goto("https://outlook.live.com/mail/", { waitUntil: "domcontentloaded" });
 
-  // Clic en "Iniciar sesión" → abre nueva pestaña
   const loginButtonSelector = 'a[id="c-shellmenu_custom_outline_signin_bhvr100_right"]:has-text("Iniciar sesión")';
   await mainPage.waitForSelector(loginButtonSelector, { timeout: 30000 });
 
