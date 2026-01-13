@@ -1,6 +1,6 @@
 {
   "name": "mail-capture",
-  "version": "1.0.13",
+  "version": "1.0.14",
   "description": "",
   "scripts": {
     "start": "node --env-file .env dist/src/index.js",
