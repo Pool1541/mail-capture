@@ -1,0 +1,58 @@
+services:
+  api:
+    image: mail-capture-api:v1.0.0
+    build:
+      context: .
+      dockerfile: infra/docker/prod/Dockerfile.api
+    container_name: mail-capture-api
+    env_file:
+      - .env
+    command: node dist/src/index.js
+    restart: unless-stopped
+    networks:
+      - mail-capture-network
+      - traefik
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.api.rule=Host(`mail-capture.${DOMAIN_NAME}`)"
+      - "traefik.http.routers.api.entrypoints=web"
+      - "traefik.http.services.api.loadbalancer.server.port=${PORT:-8080}"
+      - "traefik.docker.network=traefik"
+
+  validation-worker:
+    image: mail-capture-validation:v1.0.0
+    build:
+      context: .
+      dockerfile: infra/docker/prod/Dockerfile.validation
+    container_name: mail-capture-validation-worker
+    env_file:
+      - .env
+    command: node dist/src/validation-worker-main.js
+    restart: unless-stopped
+    networks:
+      - mail-capture-network
+    depends_on:
+      - api
+
+  scraper-worker:
+    image: mail-capture-scraper:v1.0.0
+    build:
+      context: .
+      dockerfile: infra/docker/prod/Dockerfile.scraper
+    container_name: mail-capture-scraper-worker
+    env_file:
+      - .env
+    command: node dist/src/scraper-worker-main.js
+    restart: unless-stopped
+    networks:
+      - mail-capture-network
+    depends_on:
+      - api
+    stdin_open: true
+    tty: true
+
+networks:
+  mail-capture-network:
+    driver: bridge
+  traefik:
+    external: true

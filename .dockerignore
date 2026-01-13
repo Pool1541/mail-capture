@@ -1,0 +1,11 @@
+.vscode/
+.github/
+.husky/
+coverage/
+dist/
+docs/
+node_modules/
+tmp/
+user-data/
+.env
+.env.*

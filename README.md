@@ -23,7 +23,7 @@ sudo apt install -y powershell
 pwsh
 
 # Instalar el módulo de exchange online
-Install-Module -Name ExchangeOnlineManagement -Scope CurrentUser
+Install-Module -Name ExchangeOnlineManagement -Force -AllowClobber
 ```
 
 ### Ejecutar el script de configuración de contacto
@@ -39,6 +39,9 @@ pwsh
 # Ejecuta el script
 ./scripts/config-mail-contacts.ps1
 
+# Si no ejecutas el script, tienes que logearte en el portal de Exchange Online primero.
+Connect-ExchangeOnline -UserPrincipalName tu_admin@tudominio.com -device
+
 # Puedes verificar los mensajes de éxito en la consola misntras se ejecuta el script.
 ```
 
@@ -46,4 +49,13 @@ pwsh
 
 ```powershell
 Get-Mailbox mailcapture@imboxmcapturehotmail.onmicrosoft.com | Select-Object AcceptMessagesOnlyFromSendersOrMembers
+```
+
+## Docker
+
+- Para ejecutar el proyecto en Docker, asegúrate de tener Docker instalado y ejecuta el siguiente comando en la raíz del proyecto:
+
+```bash
+docker build -t mail-capture-image .
+docker run -p 3000:8080 --env-file .env -d --name mail-capture-api mail-capture-image
 ```

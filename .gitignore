@@ -3,6 +3,9 @@
 .env.*
 !.env.example
 
+# Temporary files
+/tmp
+
 # Dependencies
 /node_modules
 
@@ -17,3 +20,8 @@
 
 # Browser user data
 /user-data
+
+/prompts
+
+# Sentry Config File
+.sentryclirc

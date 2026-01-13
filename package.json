@@ -3,11 +3,16 @@
   "version": "0.0.1",
   "description": "",
   "scripts": {
-    "start": "node --env-file .env dist/index.js",
+    "start": "node --env-file .env dist/src/index.js",
+    "start:validation-worker": "node --env-file .env dist/src/validation-worker-main.js",
+    "start:scraper-worker": "node --env-file .env dist/src/scraper-worker-main.js",
+    "preview": "npm run build && node --env-file .env dist/src/index.js",
     "dev": "tsx --watch --env-file .env.development src/index.ts",
+    "dev:validation-worker": "tsx --watch --env-file .env.development src/validation-worker-main.ts",
+    "dev:scraper-worker": "tsx --watch --env-file .env.development src/scraper-worker-main.ts",
     "dev:staging": "tsx --watch --env-file .env.staging src/index.ts",
     "dev:prod": "tsx --watch --env-file .env.production src/index.ts",
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
     "type-check": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",
@@ -17,7 +22,9 @@
     "test:run": "vitest --run",
     "test:ui": "vitest --ui",
     "coverage": "vitest run --coverage",
-    "prepare": "husky"
+    "prepare": "husky",
+    "gen:types": "npx -y supabase gen types typescript --project-id uqxdkjeuavjnbsysotsb --schema public > ./src/shared/infrastructure/types/supabase.ts",
+    "sentry:sourcemaps": "sentry-cli sourcemaps inject --org mail-capture --project node-express ./dist && sentry-cli sourcemaps upload --org mail-capture --project node-express ./dist"
   },
   "repository": {
     "type": "git",
@@ -31,15 +38,21 @@
   },
   "homepage": "https://github.com/Pool1541/mail-capture#readme",
   "dependencies": {
+    "@aws-sdk/client-sqs": "^3.862.0",
     "@azure/msal-node": "^3.5.1",
     "@microsoft/microsoft-graph-client": "^3.0.7",
+    "@sentry/cli": "^2.58.4",
+    "@sentry/node": "^10.30.0",
+    "@supabase/supabase-js": "^2.50.3",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
     "express-session": "^1.18.1",
     "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
-    "playwright": "^1.52.0"
+    "playwright": "^1.52.0",
+    "resend": "^4.7.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.24.0",
@@ -47,6 +60,7 @@
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.1",
     "@types/express-session": "^1.18.1",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/morgan": "^1.9.9",
     "@types/node": "^22.14.0",
     "@vitest/coverage-v8": "^3.1.1",
@@ -57,6 +71,7 @@
     "husky": "^9.1.7",
     "lint-staged": "^15.5.0",
     "prettier": "^3.5.3",
+    "tsc-alias": "^1.8.16",
     "tsx": "^4.19.3",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.29.1",
