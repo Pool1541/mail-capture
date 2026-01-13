@@ -1,29 +1,29 @@
 # Stage 1: Build the application using a standard Node image
 FROM node:24-bullseye AS build
 
-# Set the working directory in the container
+# Establece el directorio de trabajo
 WORKDIR /app
 
-# Copy the current directory contents into the container
-COPY . /app
+# Copia package.json y package-lock.json
+COPY package*.json ./
 
-# Clean npm cache
-RUN npm cache clean --force
-
-# Install necessary packages and dependencies
+# Instala las dependencias
 RUN npm ci
+
+# Copia el código fuente y construye la aplicación
+COPY . .
 RUN npm run build
 
-# Stage 2: Build a minimal distroless image
+# Stage 2: Runtime minimo
 FROM node:24-alpine
 
-# Copy the node_modules and built app from the build stage
+# Copia node_modules y la aplicación construida desde la etapa de build
 COPY --from=build /app/node_modules /app/node_modules
 COPY --from=build /app/dist /app/dist
 
-# Set the working directory
+# Establece el directorio de trabajo
 WORKDIR /app
 
-# Define the entry point, since distroless doesn't have a shell, npm or npx
-# all command directly pass to 'node' terminal
+# Define el punto de entrada, ya que distroless no tiene shell, npm o npx
+# todos los comandos se pasan directamente al terminal 'node'
 CMD ["node", "./dist/src/validation-worker-main.js"]

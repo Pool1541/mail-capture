@@ -4,10 +4,13 @@ FROM node:24-bullseye AS builder
 # Crear directorio de trabajo
 WORKDIR /app
 
-COPY . /app
+COPY package*.json ./
 
 # Instalar dependencias
 RUN npm ci
+
+# Copiar todos los archivos al contenedor
+COPY . .
 
 # Compilar el proyecto
 RUN npm run build
